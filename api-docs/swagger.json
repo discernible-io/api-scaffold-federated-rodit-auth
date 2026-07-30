@@ -1,0 +1,1288 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "IdentyClaw Federated Peer API (RODiT)",
+    "version": "2025.10.01",
+    "description": "# IdentyClaw federated peer API\n\nReusable pattern for **federated API authentication**: IdentyClaw **Passport** holders prove possession of their keys against **this peer**, receive a **peer-minted JWT**, and call protected routes. Built on `@rodit/rodit-auth-be` 9.x.\n\nCRUDA (`/api/cruda/*`) is only a sample protected resource — replace it with your domain.\n\n## Federation model\n\n| Identity surface | Role |\n| --- | --- |\n| **IdentyClaw home** (`https://api.identyclaw.com`) | Passport / HOLA enrollment. Home JWT does **not** authorize this peer's protected routes. |\n| **This peer** (your `apiEndpoint`) | Own RODiT service credentials. Mint JWTs via `POST /api/login`. Clients must login **against this base URL**. |\n\nEach federated peer is an independent auth boundary. Agents and apps remint a JWT per `apiEndpoint`. Do not reuse a token from another peer or from home.\n\n```\nPassport keys (Ed25519)\n        │\n        ▼\nGET /api/login/timestamp  →  challenge (timestamp + timestamp_iso)\n        │\n        ▼\nSign UTF-8: identifier + timestamp_iso  →  POST /api/login\n        │\n        ▼\nPeer JWT (Authorization: Bearer)  →  protected routes + METHOD_PERMISSION_MAP\n```\n\n## Authentication (raw)\n\n1. `GET /api/login/timestamp` — challenge pair from this peer.\n2. Sign UTF-8 `identifier + timestamp_iso` (Ed25519 → base64url). Identifier is Passport `roditid` (12 letters) or NEAR `accountid` (64-hex).\n3. `POST /api/login` — send signature + exactly one of `timestamp` / `timestamp_iso`.\n4. Call protected routes with `Authorization: Bearer <jwt_token>` (body field is `jwt_token`, not `token`).\n5. `POST /api/logout` — invalidate session (`authenticateForLogout` allows expired JWTs with valid signature).\n\n## OpenClaw / agents\n\nPreferred: `identyclaw_ensure_session({ apiEndpoint })` then `identyclaw_request({ method, path, apiEndpoint })`. The plugin caches the peer JWT and never returns it to the model.\n\nDiscovery: `GET /`, `GET /.well-known/mcp`, `GET /api/mcp/resource/doc:skills`.\n\n## Authorization\n\nProtected showcase routes under `/api/cruda/*` require both:\n\n1. Valid peer JWT (`authenticate`)\n2. Verb allowed by `METHOD_PERMISSION_MAP` (`authorize`) — keys such as `create`, `list`, `read`, `update`, `destroy`\n\nSessions admin and signclient follow the same RODiT permission patterns. See config `METHOD_PERMISSION_MAP`.\n\n## Errors\n\n`{ error: { code, message, details? }, requestId, timestamp }` — see `components.schemas.ErrorResponse`.\n\n## Scaffold usage\n\n1. Keep auth, discovery, health, swagger, and permission-map wiring.\n2. Replace or extend `/api/cruda` with your resources; mount with authenticate + authorize.\n3. Point `SERVICE_NAME` / nginx / OpenAPI `servers` at your peer hostname.\n4. Publish this OpenAPI as the contract for Passport holders integrating with your peer.\n",
+    "termsOfService": "https://identyclaw.com",
+    "contact": {
+      "name": "Discernible Inc.",
+      "url": "https://identyclaw.com",
+      "email": "support@rodit-tech.com"
+    },
+    "license": {
+      "name": "Proprietary",
+      "url": "https://identyclaw.com"
+    },
+    "x-api-id": "identyclaw-federated-peer-v1"
+  },
+  "servers": [
+    {
+      "url": "https://slc.discernible.io:8443",
+      "description": "Example peer (main) — replace with your federated peer base URL"
+    },
+    {
+      "url": "https://slc.dihola.io:8443",
+      "description": "Example peer (development)"
+    },
+    {
+      "url": "http://localhost:8080",
+      "description": "Local Node.js (direct, no nginx TLS)"
+    }
+  ],
+  "externalDocs": {
+    "description": "IdentyClaw home API (Passport / HOLA — separate auth boundary)",
+    "url": "https://api.identyclaw.com"
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "RODiT-JWT",
+        "description": "Peer-minted JWT from POST /api/login on **this** apiEndpoint (`jwt_token` in body). Not a cookie session. Not interchangeable with IdentyClaw home JWTs or other peers' tokens."
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "description": "Unified error envelope (error-handling-standard.md).",
+        "required": [
+          "error",
+          "requestId",
+          "timestamp"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "Machine-readable code (SCREAMING_SNAKE_CASE)"
+              },
+              "message": {
+                "type": "string",
+                "description": "Human-readable message"
+              },
+              "details": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              }
+            }
+          },
+          "requestId": {
+            "type": "string",
+            "description": "ULID correlation id"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Error": {
+        "deprecated": true,
+        "description": "Use ErrorResponse",
+        "$ref": "#/components/schemas/ErrorResponse"
+      },
+      "RequestResponse": {
+        "type": "object",
+        "required": [
+          "requestId"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "ulid",
+            "description": "Unique request identifier"
+          }
+        }
+      }
+    }
+  },
+  "x-terms-and-conditions": {
+    "usage-rights": "This API is provided for use by authorized clients only. Usage rights are granted upon acceptance of the terms and conditions.",
+    "intellectual-property": "All intellectual property rights in the API, including but not limited to copyright, patents, and trademarks, are owned by Discernible Inc.",
+    "liability": "Discernible Inc. shall not be liable for any direct, indirect, incidental, special, or consequential damages resulting from the use or inability to use the API.",
+    "termination": "Discernible Inc. reserves the right to terminate API access for any user who violates these terms and conditions."
+  },
+  "x-subscription-plans": {
+    "free": {
+      "description": "Limited access for development and testing",
+      "rate-limits": "100 requests per day",
+      "features": [
+        "Basic authentication",
+        "Limited API access"
+      ]
+    },
+    "basic": {
+      "description": "Standard access for small applications",
+      "rate-limits": "1000 requests per day",
+      "features": [
+        "Full authentication features",
+        "Standard support"
+      ],
+      "price": "$49/month"
+    },
+    "premium": {
+      "description": "Enhanced access for enterprise applications",
+      "rate-limits": "10000 requests per day",
+      "features": [
+        "Full authentication features",
+        "Priority support",
+        "Advanced analytics"
+      ],
+      "price": "$199/month"
+    }
+  },
+  "x-rate-limits": {
+    "default": {
+      "rate": "100 requests per 15 minutes",
+      "burst": "150 requests"
+    },
+    "premium": {
+      "rate": "1000 requests per 15 minutes",
+      "burst": "1500 requests"
+    }
+  },
+  "x-sla": {
+    "uptime": "99.9% guaranteed uptime for premium subscribers",
+    "response-time": "Average response time under 200ms",
+    "support": {
+      "standard": "24-hour response time",
+      "premium": "4-hour response time"
+    }
+  },
+  "x-versioning": {
+    "current": "v1.0.0",
+    "supported": [
+      "v1.0.0"
+    ],
+    "deprecation-policy": "APIs are supported for at least 12 months after deprecation notice"
+  },
+  "x-monitoring": {
+    "metrics": "Available via /api/metrics endpoint for authenticated users",
+    "status": "Service status available at https://status.rodit-tech.com"
+  },
+  "x-compliance": {
+    "gdpr": "Compliant with EU General Data Protection Regulation",
+    "ccpa": "Compliant with California Consumer Privacy Act",
+    "security": "Regular security audits and penetration testing"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "API Welcome and Health Check",
+        "description": "Returns welcome message with available API endpoints and service status.\nThis endpoint can be used for health checks and service discovery.",
+        "tags": [
+          "System"
+        ],
+        "responses": {
+          "200": {
+            "description": "Welcome message with endpoint information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Welcome to RODiT Authentication API"
+                    },
+                    "endpoints": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "version": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "healthy"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/api/home": {
+      "get": {
+        "summary": "Homepage endpoint",
+        "description": "Returns a simple homepage message",
+        "tags": [
+          "System"
+        ],
+        "responses": {
+          "200": {
+            "description": "Homepage message",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "This is the homepage request"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/api/logout": {
+      "post": {
+        "summary": "Logout from this peer",
+        "description": "Invalidates the peer session for this apiEndpoint. Uses authenticateForLogout so expired JWTs may still be accepted when the signature is valid. Does not invalidate IdentyClaw home or other peers' sessions.",
+        "tags": [
+          "Authentication"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Logout successful"
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Content-Type must be application/json when body is sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Logout failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "API health and dependency probes",
+        "description": "Returns JSON from the Node.js API (`status`: `healthy` or `degraded`, `checks` for NEAR RPC and RODiT auth client). Nginx proxies `/health` to this handler (no separate edge stub). Results are cached per `HEALTH_CHECKS_CACHE_MS`.",
+        "tags": [
+          "System"
+        ],
+        "responses": {
+          "200": {
+            "description": "Health payload (may be degraded while process is up)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "healthy",
+                        "degraded"
+                      ]
+                    },
+                    "degraded": {
+                      "type": "boolean"
+                    },
+                    "checks": {
+                      "type": "object"
+                    },
+                    "service": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "instance": {
+                      "type": "object",
+                      "properties": {
+                        "hostname": {
+                          "type": "string"
+                        },
+                        "pid": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/token/claims": {
+      "get": {
+        "summary": "Inspect peer JWT claims",
+        "description": "Debug helper: returns the authenticated user object from the peer JWT. Use after login to verify federation against this apiEndpoint.",
+        "tags": [
+          "Authentication",
+          "Debug"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current user claims from JWT token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requestId": {
+                      "type": "string",
+                      "format": "ulid"
+                    },
+                    "user": {
+                      "type": "object",
+                      "description": "Decoded JWT claims",
+                      "properties": {
+                        "sub": {
+                          "type": "string",
+                          "description": "Subject (user ID)"
+                        },
+                        "aud": {
+                          "type": "string",
+                          "description": "Audience"
+                        },
+                        "iss": {
+                          "type": "string",
+                          "description": "Issuer"
+                        },
+                        "exp": {
+                          "type": "integer",
+                          "description": "Expiration timestamp"
+                        },
+                        "iat": {
+                          "type": "integer",
+                          "description": "Issued at timestamp"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required or token invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/login/timestamp": {
+      "get": {
+        "summary": "Peer login challenge",
+        "description": "Federated login step 1. Returns synchronized Unix seconds (`timestamp`) and canonical ISO-8601 (`timestamp_iso`) for the Ed25519 signing payload. Fetch a fresh pair from **this** peer immediately before each login; do not reuse challenges across peers or attempts.",
+        "tags": [
+          "Authentication"
+        ],
+        "responses": {
+          "200": {
+            "description": "Challenge pair",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "timestamp",
+                    "timestamp_iso",
+                    "requestId"
+                  ],
+                  "properties": {
+                    "timestamp": {
+                      "type": "integer"
+                    },
+                    "timestamp_iso": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to generate challenge",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/login": {
+      "post": {
+        "summary": "Mint peer JWT (Passport challenge-response)",
+        "description": "Federated login step 2. Ed25519 challenge-response against **this** peer. Signed payload is UTF-8 `identifier + timestamp_iso` (no separator). Identifier is Passport `roditid` or NEAR `accountid`. Provide exactly one of `timestamp` or `timestamp_iso` from the same GET /api/login/timestamp response. Returns `jwt_token` for Bearer use on this peer only.",
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "roditid",
+                      "base64url_signature"
+                    ],
+                    "properties": {
+                      "roditid": {
+                        "type": "string"
+                      },
+                      "timestamp": {
+                        "type": "integer"
+                      },
+                      "timestamp_iso": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "base64url_signature": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "roditid",
+                      "roditid_base64url_signature"
+                    ],
+                    "properties": {
+                      "roditid": {
+                        "type": "string"
+                      },
+                      "timestamp": {
+                        "type": "integer"
+                      },
+                      "timestamp_iso": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "roditid_base64url_signature": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "headers": {
+              "New-Token": {
+                "description": "Same JWT as jwt_token in body",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "jwt_token",
+                    "requestId"
+                  ],
+                  "properties": {
+                    "jwt_token": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid login payload or timestamp",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication failed (when SILENT_LOGIN_FAILURES is false)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mcp/resources": {
+      "get": {
+        "summary": "List available MCP resources",
+        "description": "Public list of agent documentation resources (login guides, OpenAPI). No JWT required — agents read these before peer login.",
+        "tags": [
+          "MCP"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Maximum number of resources to return"
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Cursor for pagination"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of available resources with pagination info"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/mcp/resource/{uri}": {
+      "get": {
+        "summary": "Get a specific MCP resource",
+        "description": "Public MCP documentation resource by URI (e.g. doc:skills, guide:agent-login). No JWT required.",
+        "tags": [
+          "MCP"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "uri",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "URI of the resource to retrieve"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Resource not found"
+          }
+        }
+      }
+    },
+    "/api/mcp/schema": {
+      "get": {
+        "summary": "Get MCP schema",
+        "description": "Returns the schema for the MCP interface",
+        "tags": [
+          "MCP"
+        ],
+        "responses": {
+          "200": {
+            "description": "MCP schema"
+          }
+        }
+      }
+    },
+    "/api/signclient": {
+      "post": {
+        "summary": "Sign / mint client RODiT for this peer",
+        "description": "Creates and signs a client RODiT whose requested routes must be a subset of this peer's server permissioned_routes. Used when onboarding Passport holders or agents to call this federated API.",
+        "tags": [
+          "Authentication"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "tobesignedValues",
+                  "mintingfee",
+                  "mintingfeeaccount"
+                ],
+                "properties": {
+                  "tobesignedValues": {
+                    "type": "object",
+                    "description": "Values to be signed in the token"
+                  },
+                  "mintingfee": {
+                    "type": "string",
+                    "description": "Fee for minting the token"
+                  },
+                  "mintingfeeaccount": {
+                    "type": "string",
+                    "description": "Account to receive the minting fee"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Token created successfully"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/api/cruda/create": {
+      "post": {
+        "summary": "Create comment",
+        "description": "Creates a new comment Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
+        "tags": [
+          "CRUDA"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "comment"
+                ],
+                "properties": {
+                  "comment": {
+                    "type": "string",
+                    "description": "Comment text"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Comment created successfully"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      }
+    },
+    "/api/cruda/list": {
+      "post": {
+        "summary": "List all comments",
+        "description": "Retrieves all comments Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
+        "tags": [
+          "CRUDA"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comments retrieved successfully"
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      },
+      "get": {
+        "summary": "List all comments (GET)",
+        "description": "Retrieves all comments via GET Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
+        "tags": [
+          "CRUDA"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comments retrieved successfully"
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      }
+    },
+    "/api/cruda/read": {
+      "post": {
+        "summary": "Read specific comment",
+        "description": "Retrieves a specific comment by ID Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
+        "tags": [
+          "CRUDA"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "Comment ID"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Comment retrieved successfully"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Comment not found"
+          }
+        }
+      }
+    },
+    "/api/cruda/read/{id}": {
+      "get": {
+        "summary": "Read specific comment (by path param)",
+        "description": "Retrieves a specific comment by ID Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
+        "tags": [
+          "CRUDA"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "integer"
+            },
+            "required": true,
+            "description": "Comment ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comment retrieved successfully"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Comment not found"
+          }
+        }
+      }
+    },
+    "/api/cruda/update": {
+      "post": {
+        "summary": "Update comment",
+        "description": "Updates an existing comment Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
+        "tags": [
+          "CRUDA"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "Comment ID"
+                  },
+                  "comment": {
+                    "type": "string",
+                    "description": "Updated comment text"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Comment updated successfully"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Comment not found"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update comment (PUT)",
+        "description": "Updates an existing comment via PUT Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
+        "tags": [
+          "CRUDA"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "comment"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "Comment ID"
+                  },
+                  "comment": {
+                    "type": "string",
+                    "description": "Updated comment text"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Comment updated successfully"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Comment not found"
+          }
+        }
+      }
+    },
+    "/api/cruda/destroy": {
+      "post": {
+        "summary": "Delete comment",
+        "description": "Deletes an existing comment Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
+        "tags": [
+          "CRUDA"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "Comment ID to delete"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Comment deleted successfully"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Comment not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete comment (DELETE)",
+        "description": "Deletes an existing comment via DELETE Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
+        "tags": [
+          "CRUDA"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "Comment ID to delete"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Comment deleted successfully"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Comment not found"
+          }
+        }
+      }
+    },
+    "/api/sessions/list_all": {
+      "get": {
+        "summary": "List all sessions",
+        "description": "Get information about all active sessions (admin only)",
+        "tags": [
+          "Sessions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sessions retrieved successfully"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission denied"
+          }
+        }
+      }
+    },
+    "/api/sessions/revoke": {
+      "post": {
+        "summary": "Revoke specific session",
+        "description": "Force terminate a specific session (admin only)",
+        "tags": [
+          "Sessions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "sessionId"
+                ],
+                "properties": {
+                  "sessionId": {
+                    "type": "string",
+                    "description": "ID of session to terminate"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Reason for termination"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session terminated successfully"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "404": {
+            "description": "Session not found"
+          }
+        }
+      }
+    },
+    "/api/sessions/cleanup": {
+      "post": {
+        "summary": "Cleanup expired sessions",
+        "description": "Run manual cleanup of expired sessions (admin only)",
+        "tags": [
+          "Sessions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cleanup completed successfully"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission denied"
+          }
+        }
+      }
+    },
+    "/api/metrics": {
+      "get": {
+        "summary": "Get performance metrics",
+        "description": "Retrieve current performance metrics",
+        "tags": [
+          "Metrics"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Metrics retrieved successfully"
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      }
+    },
+    "/api/metrics/system": {
+      "get": {
+        "summary": "Get system metrics",
+        "description": "Retrieve system resource metrics (CPU, memory, etc.)",
+        "tags": [
+          "Metrics"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "System metrics retrieved successfully"
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      }
+    },
+    "/api/metrics/reset": {
+      "post": {
+        "summary": "Reset metrics",
+        "description": "Reset performance metrics counters (admin only)",
+        "tags": [
+          "Metrics"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Metrics reset successfully"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission denied - admin required"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "Federated peer login for IdentyClaw Passport holders: challenge, mint JWT, logout, signclient"
+    },
+    {
+      "name": "System",
+      "description": "Health and discovery-facing system endpoints"
+    },
+    {
+      "name": "CRUDA",
+      "description": "Sample protected resource (Create / Read / Update / Destroy / list). Demonstrates authenticate + authorize; replace with your API."
+    },
+    {
+      "name": "Sessions",
+      "description": "Privileged session administration (peer JWT + permissions)"
+    },
+    {
+      "name": "Metrics",
+      "description": "Performance monitoring endpoints"
+    },
+    {
+      "name": "MCP",
+      "description": "Public agent documentation resources for peer login (OpenClaw / shell). Not IdentyClaw home MCP."
+    },
+    {
+      "name": "Debug",
+      "description": "Development helpers such as token claims inspection"
+    },
+    {
+      "name": "RODiT Configuration",
+      "description": "RODiT configuration surfaces (if exposed)"
+    }
+  ]
+}

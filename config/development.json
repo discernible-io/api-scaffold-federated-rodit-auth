@@ -1,0 +1,104 @@
+{
+  "HEALTH_CHECKS_CACHE_MS": 15000,
+  "NEAR_RPC_TIMEOUT": 10000,
+  "API_DEFAULT_OPTIONS": {
+    "DB_PATH": "/app/data/database.sqlite"
+  },
+  "API_VERSION": "2025.10.01",
+  "NEAR_CONTRACT_ID": "genaaaa-identyclaw-com.near",
+  "RODIT_NEAR_CREDENTIALS_SOURCE": "env",
+  "SECURITY_OPTIONS": {
+    "SESSION_SECRET": "HMAC-session-secret-is-not-set",
+    "SILENT_LOGIN_FAILURES": "false",
+    "WEBHOOK_TLS_SKIP_VERIFY": "true"
+  },
+  "SERVERPORT": 8080,
+  "SERVICE_NAME": "slc.dihola.io",
+  "PUBLIC_PORT": "8443",
+  "FRONTEND_ORIGIN": "",
+  "LOG_LEVEL": "debug",
+  "LOKI_TLS_SKIP_VERIFY": "true",
+  "LOKI_URL": "https://grafana47.dihola.io:3100",
+  "METHOD_PERMISSION_MAP": {
+    "logout": [
+      "entityAndProperties",
+      "propertiesOnly",
+      "entityOnly"
+    ],
+    "claims": [
+      "entityAndProperties",
+      "propertiesOnly",
+      "entityOnly"
+    ],
+    "resources": [
+      "entityAndProperties",
+      "propertiesOnly",
+      "entityOnly"
+    ],
+    "resource": [
+      "entityAndProperties",
+      "propertiesOnly",
+      "entityOnly"
+    ],
+    "signclient": [
+      "entityAndProperties",
+      "propertiesOnly",
+      "entityOnly"
+    ],
+    "create": [
+      "entityAndProperties",
+      "propertiesOnly",
+      "entityOnly"
+    ],
+    "list": [
+      "entityAndProperties",
+      "propertiesOnly",
+      "entityOnly"
+    ],
+    "read": [
+      "entityAndProperties",
+      "propertiesOnly",
+      "entityOnly"
+    ],
+    "update": [
+      "entityAndProperties",
+      "propertiesOnly",
+      "entityOnly"
+    ],
+    "destroy": [
+      "entityAndProperties",
+      "propertiesOnly",
+      "entityOnly"
+    ],
+    "list_all": [
+      "entityAndProperties",
+      "propertiesOnly",
+      "entityOnly"
+    ],
+    "revoke": [
+      "entityAndProperties",
+      "propertiesOnly",
+      "entityOnly"
+    ],
+    "cleanup": [
+      "entityAndProperties",
+      "propertiesOnly",
+      "entityOnly"
+    ],
+    "metrics": [
+      "entityAndProperties",
+      "propertiesOnly",
+      "entityOnly"
+    ],
+    "system": [
+      "entityAndProperties",
+      "propertiesOnly",
+      "entityOnly"
+    ],
+    "reset": [
+      "entityAndProperties",
+      "propertiesOnly",
+      "entityOnly"
+    ]
+  }
+}

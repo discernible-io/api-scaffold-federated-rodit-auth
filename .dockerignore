@@ -1,0 +1,29 @@
+# Ignore all PEM files
+*.pem
+
+# Common files/folders to ignore
+node_modules
+npm-debug.log
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+!.env.production
+
+# Build output
+dist
+build
+
+# Logs
+logs
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

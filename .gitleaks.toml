@@ -1,0 +1,8 @@
+title = "api-idc gitleaks config"
+
+[allowlist]
+description = "Documented non-secret placeholders in committed config"
+regexes = [
+  '''HMAC-session-secret-is-not-set''',
+  '''api-url-not-set\.example\.com''',
+]

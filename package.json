@@ -1,0 +1,42 @@
+{
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "@rodit/rodit-auth-be": "9.14.0",
+    "config": "^4.4.1",
+    "connect-sqlite3": "0.9.16",
+    "express": "4.21.2",
+    "express-session": "^1.19.0",
+    "nodemon": "^3.1.14",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
+    "swagger-ui-express": "^5.0.1",
+    "ulid": "^3.0.2",
+    "winston": "^3.19.0",
+    "winston-daily-rotate-file": "^5.0.0",
+    "winston-loki": "6.1.4",
+    "zod": "^3.25.76"
+  },
+  "name": "api-idc",
+  "version": "2025.10.01",
+  "description": "RODiT / IdentyClaw passport auth peer with CRUDA showcase — scaffold for your own APIs",
+  "main": "src/app.js",
+  "scripts": {
+    "preinstall": "node scripts/enforce-minimum-package-age.js",
+    "start": "nodemon src/app.js",
+    "update:permissions": "node scripts/update-permissionsmap.js --all-environments",
+    "validate:permissions": "node scripts/update-permissionsmap.js --validate --all-environments"
+  },
+  "overrides": {
+    "undici": "^6.24.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/discernible-io/api-idc.git"
+  },
+  "author": "Discernible Ltd",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/discernible-io/api-idc/issues"
+  },
+  "homepage": "https://github.com/discernible-io/api-idc#readme"
+}

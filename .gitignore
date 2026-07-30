@@ -1,0 +1,57 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+*
+!*/
+!*.*
+
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+vendor/
+
+# Build outputs
+**/out/
+**/dist/
+**/build/
+**/.parcel-cache/
+/target/
+
+# Package manager logs
+npm-debug.log*
+Cargo.lock
+/rodit/Cargo.lock
+/rodit-cli/Cargo.lock
+
+# Keys and credentials
+**/neardev/
+certs/
+privatekey
+publickey
+dev-account
+*.crt
+*.der
+*.pem
+*.key
+account
+account.env
+*.hcl
+
+# Executables
+boringtun-cli
+rodit-cli
+
+# Testing
+/coverage
+
+# Logs and temporary files
+*.log
+*.out
+*.txt
+nohup.out
+output.txt
+
+# Database
+*.sqlite
+
+# OS generated file
