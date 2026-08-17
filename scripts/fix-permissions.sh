@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
-# Fix ownership, permissions, and SELinux labels for syntheticlc rootless Podman volumes
+# Fix ownership, permissions, and SELinux labels for api-idc rootless Podman volumes
 # Usage: ./fix-permissions.sh [APP_DIR]
-# If APP_DIR is not provided, defaults to "$HOME/api-idc"
+# If APP_DIR is not provided, defaults to "$HOME/api-idc-app"
 
 set -euo pipefail
 
-APP_DIR=${1:-"${HOME}/api-idc"}
+APP_DIR=${1:-"${HOME}/api-idc-app"}
 LOG_DIR="${APP_DIR}/logs"
-APP_LOG_DIR="${HOME}/syntheticlc-app/logs"
 DATA_DIR="${APP_DIR}/data"
 CERTS_DIR="${APP_DIR}/certs"
 NGINX_DIR="${APP_DIR}/nginx"
@@ -18,22 +17,16 @@ API_UID=1000
 API_GID=1000
 # Nginx reads certs as user "nginx" but only needs world-readable files
 
-mkdir -p "${LOG_DIR}" "${DATA_DIR}" "${CERTS_DIR}" "${NGINX_DIR}" "${APP_LOG_DIR}"
+mkdir -p "${LOG_DIR}" "${DATA_DIR}" "${CERTS_DIR}" "${NGINX_DIR}" "${LOG_DIR}/nginx"
 
 # Permissions
 # - logs: writable by API -> 0775 on dir, 0664 on files
 # - data: writable by API only -> 0770 on dir, 0660 on files
 # - certs: world-readable (but keep keys restricted if present)
 chmod -R u+rwX,g+rwX,o-rwx "${DATA_DIR}" || true
-# Set permissions for main app logs
 chmod -R u+rwX,g+rwX,o+rX "${LOG_DIR}" || true
 find "${LOG_DIR}" -type d -exec chmod 0775 {} + 2>/dev/null || true
 find "${LOG_DIR}" -type f -exec chmod 0664 {} + 2>/dev/null || true
-
-# Set permissions for syntheticlc-app logs
-chmod -R u+rwX,g+rwX,o+rX "${APP_LOG_DIR}" || true
-find "${APP_LOG_DIR}" -type d -exec chmod 0775 {} + 2>/dev/null || true
-find "${APP_LOG_DIR}" -type f -exec chmod 0664 {} + 2>/dev/null || true
 find "${DATA_DIR}" -type d -exec chmod 0770 {} + 2>/dev/null || true
 find "${DATA_DIR}" -type f -exec chmod 0660 {} + 2>/dev/null || true
 
@@ -50,11 +43,6 @@ if command -v podman >/dev/null 2>&1; then
   echo "Applying userns ownership via podman unshare..."
   podman unshare chown -R ${API_UID}:${API_GID} "${LOG_DIR}" || true
   podman unshare chown -R ${API_UID}:${API_GID} "${DATA_DIR}" || true
-  # Ensure ownership on external app logs used by nginx as well
-  # This prevents "Operation not permitted" when chmod runs on files created by containers
-  if [ -d "${APP_LOG_DIR}" ]; then
-    podman unshare chown -R ${API_UID}:${API_GID} "${APP_LOG_DIR}" || true
-  fi
 else
   echo "Warning: podman not found. Skipping userns chown step." >&2
 fi
@@ -63,7 +51,6 @@ fi
 # but this ensures labels are correct even before starting containers.
 if command -v selinuxenabled >/dev/null 2>&1 && selinuxenabled; then
   echo "Applying SELinux labels (container_file_t)..."
-  # chcon is safe; if types differ, it will be applied.
   chcon -R -t container_file_t "${LOG_DIR}" 2>/dev/null || true
   chcon -R -t container_file_t "${DATA_DIR}" 2>/dev/null || true
   chcon -R -t container_file_t "${CERTS_DIR}" 2>/dev/null || true

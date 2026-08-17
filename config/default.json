@@ -10,15 +10,15 @@
   "SECURITY_OPTIONS": {
     "SESSION_SECRET": "HMAC-session-secret-is-not-set",
     "SILENT_LOGIN_FAILURES": "false",
-    "WEBHOOK_TLS_SKIP_VERIFY": "true"
+    "WEBHOOK_TLS_SKIP_VERIFY": "false"
   },
   "SERVERPORT": 8080,
-  "SERVICE_NAME": "slc.discernible.io",
+  "SERVICE_NAME": "your-peer.example",
   "PUBLIC_PORT": "8443",
-  "FRONTEND_ORIGIN": "https://slc.discernible.io",
+  "FRONTEND_ORIGIN": "",
+  "WEBHOOK_TEST_ENABLED": "false",
   "LOG_LEVEL": "info",
   "LOKI_TLS_SKIP_VERIFY": "false",
-  "LOKI_URL": "https://grafana46.discernible.io:3100",
   "METHOD_PERMISSION_MAP": {
     "logout": [
       "entityAndProperties",
@@ -30,17 +30,7 @@
       "propertiesOnly",
       "entityOnly"
     ],
-    "resources": [
-      "entityAndProperties",
-      "propertiesOnly",
-      "entityOnly"
-    ],
-    "resource": [
-      "entityAndProperties",
-      "propertiesOnly",
-      "entityOnly"
-    ],
-    "signclient": [
+    "cruda": [
       "entityAndProperties",
       "propertiesOnly",
       "entityOnly"
@@ -96,6 +86,11 @@
       "entityOnly"
     ],
     "reset": [
+      "entityAndProperties",
+      "propertiesOnly",
+      "entityOnly"
+    ],
+    "debug": [
       "entityAndProperties",
       "propertiesOnly",
       "entityOnly"

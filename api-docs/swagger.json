@@ -3,7 +3,7 @@
   "info": {
     "title": "IdentyClaw Federated Peer API (RODiT)",
     "version": "2025.10.01",
-    "description": "# IdentyClaw federated peer API\n\nReusable pattern for **federated API authentication**: IdentyClaw **Passport** holders prove possession of their keys against **this peer**, receive a **peer-minted JWT**, and call protected routes. Built on `@rodit/rodit-auth-be` 9.x.\n\nCRUDA (`/api/cruda/*`) is only a sample protected resource — replace it with your domain.\n\n## Federation model\n\n| Identity surface | Role |\n| --- | --- |\n| **IdentyClaw home** (`https://api.identyclaw.com`) | Passport / HOLA enrollment. Home JWT does **not** authorize this peer's protected routes. |\n| **This peer** (your `apiEndpoint`) | Own RODiT service credentials. Mint JWTs via `POST /api/login`. Clients must login **against this base URL**. |\n\nEach federated peer is an independent auth boundary. Agents and apps remint a JWT per `apiEndpoint`. Do not reuse a token from another peer or from home.\n\n```\nPassport keys (Ed25519)\n        │\n        ▼\nGET /api/login/timestamp  →  challenge (timestamp + timestamp_iso)\n        │\n        ▼\nSign UTF-8: identifier + timestamp_iso  →  POST /api/login\n        │\n        ▼\nPeer JWT (Authorization: Bearer)  →  protected routes + METHOD_PERMISSION_MAP\n```\n\n## Authentication (raw)\n\n1. `GET /api/login/timestamp` — challenge pair from this peer.\n2. Sign UTF-8 `identifier + timestamp_iso` (Ed25519 → base64url). Identifier is Passport `roditid` (12 letters) or NEAR `accountid` (64-hex).\n3. `POST /api/login` — send signature + exactly one of `timestamp` / `timestamp_iso`.\n4. Call protected routes with `Authorization: Bearer <jwt_token>` (body field is `jwt_token`, not `token`).\n5. `POST /api/logout` — invalidate session (`authenticateForLogout` allows expired JWTs with valid signature).\n\n## OpenClaw / agents\n\nPreferred: `identyclaw_ensure_session({ apiEndpoint })` then `identyclaw_request({ method, path, apiEndpoint })`. The plugin caches the peer JWT and never returns it to the model.\n\nDiscovery: `GET /`, `GET /.well-known/mcp`, `GET /api/mcp/resource/doc:skills`.\n\n## Authorization\n\nProtected showcase routes under `/api/cruda/*` require both:\n\n1. Valid peer JWT (`authenticate`)\n2. Verb allowed by `METHOD_PERMISSION_MAP` (`authorize`) — keys such as `create`, `list`, `read`, `update`, `destroy`\n\nSessions admin and signclient follow the same RODiT permission patterns. See config `METHOD_PERMISSION_MAP`.\n\n## Errors\n\n`{ error: { code, message, details? }, requestId, timestamp }` — see `components.schemas.ErrorResponse`.\n\n## Scaffold usage\n\n1. Keep auth, discovery, health, swagger, and permission-map wiring.\n2. Replace or extend `/api/cruda` with your resources; mount with authenticate + authorize.\n3. Point `SERVICE_NAME` / nginx / OpenAPI `servers` at your peer hostname.\n4. Publish this OpenAPI as the contract for Passport holders integrating with your peer.\n",
+    "description": "# IdentyClaw federated peer API\n\nReusable pattern for **federated API authentication**: IdentyClaw **Passport** holders prove possession of their keys against **this peer**, receive a **peer-minted JWT**, and call protected routes. Built on `@rodit/rodit-auth-be` 9.x.\n\nCRUDA (`/api/cruda/*`) is only a sample protected resource — replace it with your domain.\n\n## Federation model\n\n| Identity surface | Role |\n| --- | --- |\n| **IdentyClaw home** (`https://api.identyclaw.com`) | Passport / HOLA enrollment. Home JWT does **not** authorize this peer's protected routes. |\n| **This peer** (your `apiEndpoint`) | Own RODiT service credentials. Mint JWTs via `POST /api/login`. Clients must login **against this base URL**. |\n\nEach federated peer is an independent auth boundary. Agents and apps remint a JWT per `apiEndpoint`. Do not reuse a token from another peer or from home.\n\n```\nPassport keys (Ed25519)\n        │\n        ▼\nGET /api/login/timestamp  →  challenge (timestamp + timestamp_iso)\n        │\n        ▼\nSign UTF-8: identifier + timestamp_iso  →  POST /api/login\n        │\n        ▼\nPeer JWT (Authorization: Bearer)  →  protected routes + METHOD_PERMISSION_MAP\n```\n\n## Authentication (raw)\n\n1. `GET /api/login/timestamp` — challenge pair from this peer.\n2. Sign UTF-8 `identifier + timestamp_iso` (Ed25519 → base64url). Identifier is Passport `roditid` (12 letters) or NEAR `accountid` (64-hex).\n3. `POST /api/login` — send signature + exactly one of `timestamp` / `timestamp_iso`.\n4. Call protected routes with `Authorization: Bearer <jwt_token>` (body field is `jwt_token`, not `token`).\n5. `POST /api/logout` — invalidate session (`authenticateForLogout` allows expired JWTs with valid signature).\n\n## OpenClaw / agents\n\nPreferred: `identyclaw_ensure_session({ apiEndpoint })` then `identyclaw_request({ method, path, apiEndpoint })`. The plugin caches the peer JWT and never returns it to the model.\n\nDiscovery: `GET /`, `GET /.well-known/mcp`, `GET /api/mcp/resource/doc:skills`.\n\n## Authorization\n\nProtected showcase routes under `/api/cruda/*` require both:\n\n1. Valid peer JWT (`authenticate`)\n2. Verb allowed by `METHOD_PERMISSION_MAP` (`authorize`) — keys such as `create`, `list`, `read`, `update`, `destroy`\n\nSessions admin follows the same RODiT permission patterns. See config `METHOD_PERMISSION_MAP`.\n\n## Errors\n\n`{ error: { code, message, details? }, requestId, timestamp }` — see `components.schemas.ErrorResponse`.\n\n## Scaffold usage\n\n1. Keep auth, discovery, health, swagger, and permission-map wiring.\n2. Replace or extend `/api/cruda` with your resources; mount with authenticate + authorize.\n3. Point `SERVICE_NAME` / nginx / OpenAPI `servers` at your peer hostname.\n4. Publish this OpenAPI as the contract for Passport holders integrating with your peer.\n",
     "termsOfService": "https://identyclaw.com",
     "contact": {
       "name": "Discernible Inc.",
@@ -18,12 +18,8 @@
   },
   "servers": [
     {
-      "url": "https://slc.discernible.io:8443",
-      "description": "Example peer (main) — replace with your federated peer base URL"
-    },
-    {
-      "url": "https://slc.dihola.io:8443",
-      "description": "Example peer (development)"
+      "url": "https://your-peer.example:8443",
+      "description": "This peer — replace with your federated peer base URL"
     },
     {
       "url": "http://localhost:8080",
@@ -166,8 +162,9 @@
     "deprecation-policy": "APIs are supported for at least 12 months after deprecation notice"
   },
   "x-monitoring": {
-    "metrics": "Available via /api/metrics endpoint for authenticated users",
-    "status": "Service status available at https://status.rodit-tech.com"
+    "metrics": "GET /api/metrics (authenticated)",
+    "health": "GET /health",
+    "discovery": "GET / and GET /.well-known/mcp"
   },
   "x-compliance": {
     "gdpr": "Compliant with EU General Data Protection Regulation",
@@ -177,125 +174,142 @@
   "paths": {
     "/": {
       "get": {
-        "summary": "API Welcome and Health Check",
-        "description": "Returns welcome message with available API endpoints and service status.\nThis endpoint can be used for health checks and service discovery.",
+        "summary": "API discovery",
+        "description": "Public discovery document for this peer: version, agent login guidance, MCP HTTP paths, and public vs authenticated endpoint lists.",
         "tags": [
           "System"
         ],
         "responses": {
           "200": {
-            "description": "Welcome message with endpoint information",
+            "description": "Discovery payload",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
+                  "required": [
+                    "name",
+                    "version",
+                    "requestId"
+                  ],
                   "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "Welcome to RODiT Authentication API"
+                    "name": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "agentGuide": {
+                      "type": "object"
+                    },
+                    "documentation": {
+                      "type": "object",
+                      "properties": {
+                        "swagger": {
+                          "type": "string"
+                        },
+                        "openapi": {
+                          "type": "string"
+                        }
+                      }
                     },
                     "endpoints": {
+                      "type": "object",
+                      "properties": {
+                        "public": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "authenticated": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "endpointsList": {
                       "type": "array",
                       "items": {
                         "type": "string"
                       }
                     },
-                    "version": {
-                      "type": "string"
+                    "mcp": {
+                      "type": "object"
                     },
-                    "status": {
+                    "doNotUseRawHttpGetOn": {
                       "type": "string",
-                      "example": "healthy"
+                      "example": "/mcp"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "ulid"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
                     }
                   }
                 }
               }
             }
-          },
-          "500": {
-            "description": "Server error"
           }
         }
       }
     },
-    "/api/home": {
+    "/.well-known/mcp": {
       "get": {
-        "summary": "Homepage endpoint",
-        "description": "Returns a simple homepage message",
+        "summary": "MCP discovery metadata",
+        "description": "Public MCP discovery for agents: streamable HTTP endpoint `/mcp`, resource list/get paths, and login guidance. Prefer this over a bare GET `/mcp`.",
         "tags": [
+          "MCP",
           "System"
         ],
         "responses": {
           "200": {
-            "description": "Homepage message",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string",
-                  "example": "This is the homepage request"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Server error"
-          }
-        }
-      }
-    },
-    "/api/logout": {
-      "post": {
-        "summary": "Logout from this peer",
-        "description": "Invalidates the peer session for this apiEndpoint. Uses authenticateForLogout so expired JWTs may still be accepted when the signature is valid. Does not invalidate IdentyClaw home or other peers' sessions.",
-        "tags": [
-          "Authentication"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": true
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Logout successful"
-          },
-          "401": {
-            "description": "Authentication required",
+            "description": "MCP discovery document",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "415": {
-            "description": "Content-Type must be application/json when body is sent",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Logout failed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string"
+                    },
+                    "transport": {
+                      "type": "object"
+                    },
+                    "resources": {
+                      "type": "object"
+                    },
+                    "tools": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "agentGuide": {
+                      "type": "object"
+                    },
+                    "httpAccessForAgents": {
+                      "type": "object"
+                    },
+                    "doNotUseRawHttpGetOn": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "ulid"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
                 }
               }
             }
@@ -357,76 +371,230 @@
         }
       }
     },
-    "/api/token/claims": {
+    "/home": {
       "get": {
-        "summary": "Inspect peer JWT claims",
-        "description": "Debug helper: returns the authenticated user object from the peer JWT. Use after login to verify federation against this apiEndpoint.",
+        "summary": "Homepage (root mount)",
+        "description": "Same handler as GET /api/home; `home` router is also mounted at `/`.",
         "tags": [
-          "Authentication",
-          "Debug"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
+          "System"
         ],
         "responses": {
           "200": {
-            "description": "Current user claims from JWT token",
+            "description": "Homepage message",
             "content": {
-              "application/json": {
+              "text/plain": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "requestId": {
-                      "type": "string",
-                      "format": "ulid"
-                    },
-                    "user": {
-                      "type": "object",
-                      "description": "Decoded JWT claims",
-                      "properties": {
-                        "sub": {
-                          "type": "string",
-                          "description": "Subject (user ID)"
-                        },
-                        "aud": {
-                          "type": "string",
-                          "description": "Audience"
-                        },
-                        "iss": {
-                          "type": "string",
-                          "description": "Issuer"
-                        },
-                        "exp": {
-                          "type": "integer",
-                          "description": "Expiration timestamp"
-                        },
-                        "iat": {
-                          "type": "integer",
-                          "description": "Issued at timestamp"
-                        }
-                      }
-                    }
-                  }
+                  "type": "string",
+                  "example": "This is the homepage request"
                 }
               }
             }
           },
-          "401": {
-            "description": "Authentication required or token invalid",
+          "500": {
+            "description": "Failed to process homepage request",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    },
-                    "requestId": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "head": {
+        "summary": "Homepage probe (root mount)",
+        "tags": [
+          "System"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/home": {
+      "get": {
+        "summary": "Homepage endpoint",
+        "description": "Returns a simple homepage message",
+        "tags": [
+          "System"
+        ],
+        "responses": {
+          "200": {
+            "description": "Homepage message",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "This is the homepage request"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to process homepage request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "head": {
+        "summary": "Homepage probe",
+        "description": "Empty 200 for health/benchmark probes.",
+        "tags": [
+          "System"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api-docs": {
+      "get": {
+        "summary": "Swagger UI",
+        "description": "Interactive OpenAPI explorer served by swagger-ui-express.",
+        "tags": [
+          "System"
+        ],
+        "responses": {
+          "200": {
+            "description": "HTML Swagger UI"
+          }
+        }
+      }
+    },
+    "/api-docs/swagger.json": {
+      "get": {
+        "summary": "OpenAPI document",
+        "description": "Raw OpenAPI 3.0 spec for this peer (same file as `api-docs/swagger.json`).",
+        "tags": [
+          "System"
+        ],
+        "responses": {
+          "200": {
+            "description": "OpenAPI 3.0 JSON",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mcp": {
+      "post": {
+        "summary": "MCP streamable HTTP (JSON-RPC)",
+        "description": "MCP Streamable HTTP transport. Send `initialize` first; subsequent calls need `Mcp-Session-Id`. Tools: `list_resources`, `get_resource`. JWT is optional. Do not use this as a REST GET for docs — use `/.well-known/mcp` or `/api/mcp/*`.",
+        "tags": [
+          "MCP"
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Mcp-Session-Id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required after initialize"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "JSON-RPC response or SSE"
+          },
+          "400": {
+            "description": "MCP session required or invalid initialize",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "MCP streamable HTTP (SSE)",
+        "description": "SSE stream for an existing MCP session. Requires `Mcp-Session-Id` from initialize. Bare GET without a session returns 400 `MCP_TRANSPORT_SESSION_REQUIRED`.",
+        "tags": [
+          "MCP"
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Mcp-Session-Id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE stream"
+          },
+          "400": {
+            "description": "MCP session required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "MCP session terminate",
+        "description": "Closes the MCP Streamable HTTP session identified by `Mcp-Session-Id`.",
+        "tags": [
+          "MCP"
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Mcp-Session-Id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session terminated"
+          },
+          "400": {
+            "description": "MCP session required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -503,7 +671,32 @@
                     ],
                     "properties": {
                       "roditid": {
+                        "type": "string",
+                        "description": "12-letter Passport token id"
+                      },
+                      "timestamp": {
+                        "type": "integer",
+                        "description": "Unix seconds from GET /api/login/timestamp"
+                      },
+                      "timestamp_iso": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "base64url_signature": {
                         "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "accountid",
+                      "base64url_signature"
+                    ],
+                    "properties": {
+                      "accountid": {
+                        "type": "string",
+                        "description": "64-char lowercase hex NEAR implicit account"
                       },
                       "timestamp": {
                         "type": "integer"
@@ -535,7 +728,8 @@
                         "format": "date-time"
                       },
                       "roditid_base64url_signature": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Legacy alias for base64url_signature"
                       }
                     }
                   }
@@ -595,6 +789,149 @@
                 }
               }
             }
+          },
+          "415": {
+            "description": "Content-Type must be application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/logout": {
+      "post": {
+        "summary": "Logout from this peer",
+        "description": "Invalidates the peer session for this apiEndpoint. Uses authenticateForLogout so expired JWTs may still be accepted when the signature is valid. Does not invalidate IdentyClaw home or other peers' sessions.",
+        "tags": [
+          "Authentication"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "JSON body required (may be empty). Content-Type must be application/json.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Logout successful"
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Content-Type must be application/json when body is sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Logout failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/token/claims": {
+      "get": {
+        "summary": "Inspect peer JWT claims",
+        "description": "Debug helper: returns the authenticated user object from the peer JWT. Use after login to verify federation against this apiEndpoint.",
+        "tags": [
+          "Authentication",
+          "Debug"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current user claims from JWT token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "requestId"
+                  ],
+                  "properties": {
+                    "requestId": {
+                      "type": "string",
+                      "format": "ulid"
+                    },
+                    "user": {
+                      "type": "object",
+                      "nullable": true,
+                      "description": "Authenticated user object from this peer JWT (`req.user`)",
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required or token invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -626,10 +963,51 @@
         ],
         "responses": {
           "200": {
-            "description": "List of available resources with pagination info"
+            "description": "Resource list plus requestId",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "resources": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "uri": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "ulid"
+                    }
+                  }
+                }
+              }
+            }
           },
-          "401": {
-            "description": "Unauthorized"
+          "500": {
+            "description": "Failed to list resources",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -654,81 +1032,128 @@
         ],
         "responses": {
           "200": {
-            "description": "Resource content"
-          },
-          "401": {
-            "description": "Unauthorized"
+            "description": "Resource content plus requestId",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                        "type": {
+                          "type": "string"
+                        },
+                        "content": {
+                          "description": "Resource payload: JSON object or markdown string depending on type"
+                        },
+                        "requestId": {
+                      "type": "string",
+                      "format": "ulid"
+                    }
+                  }
+                }
+              }
+            }
           },
           "404": {
-            "description": "Resource not found"
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to retrieve resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
     },
     "/api/mcp/schema": {
       "get": {
-        "summary": "Get MCP schema",
-        "description": "Returns the schema for the MCP interface",
+        "summary": "OpenAPI spec via MCP",
+        "description": "Returns this peer's OpenAPI document (`api-docs/swagger.json`) plus `requestId`.",
         "tags": [
           "MCP"
         ],
         "responses": {
           "200": {
-            "description": "MCP schema"
+            "description": "OpenAPI 3.0 document with requestId"
+          },
+          "500": {
+            "description": "Failed to retrieve schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
     },
-    "/api/signclient": {
-      "post": {
-        "summary": "Sign / mint client RODiT for this peer",
-        "description": "Creates and signs a client RODiT whose requested routes must be a subset of this peer's server permissioned_routes. Used when onboarding Passport holders or agents to call this federated API.",
+    "/api/cruda": {
+      "get": {
+        "summary": "CRUDA endpoint index",
+        "description": "Lists CRUDA verb paths. Mounted behind authenticate + authorize (METHOD_PERMISSION_MAP key `cruda`).",
         "tags": [
-          "Authentication"
+          "CRUDA"
         ],
         "security": [
           {
             "bearerAuth": []
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "tobesignedValues",
-                  "mintingfee",
-                  "mintingfeeaccount"
-                ],
-                "properties": {
-                  "tobesignedValues": {
-                    "type": "object",
-                    "description": "Values to be signed in the token"
-                  },
-                  "mintingfee": {
-                    "type": "string",
-                    "description": "Fee for minting the token"
-                  },
-                  "mintingfeeaccount": {
-                    "type": "string",
-                    "description": "Account to receive the minting fee"
+        "responses": {
+          "200": {
+            "description": "CRUDA verb index",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "endpoints": {
+                      "type": "object"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "ulid"
+                    }
                   }
                 }
               }
             }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Token created successfully"
           },
-          "400": {
-            "description": "Invalid request"
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
-          "500": {
-            "description": "Server error"
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -736,7 +1161,7 @@
     "/api/cruda/create": {
       "post": {
         "summary": "Create comment",
-        "description": "Creates a new comment Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
+        "description": "Creates a new comment. Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
         "tags": [
           "CRUDA"
         ],
@@ -758,6 +1183,11 @@
                   "comment": {
                     "type": "string",
                     "description": "Comment text"
+                  },
+                  "author": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Optional author label"
                   }
                 }
               }
@@ -765,14 +1195,74 @@
           }
         },
         "responses": {
-          "201": {
-            "description": "Comment created successfully"
+          "200": {
+            "description": "Comment created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "comment": {
+                      "type": "string"
+                    },
+                    "author": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "ulid"
+                    },
+                    "new_jwt_token": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           },
           "400": {
-            "description": "Invalid request"
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Authentication required"
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -780,7 +1270,7 @@
     "/api/cruda/list": {
       "post": {
         "summary": "List all comments",
-        "description": "Retrieves all comments Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
+        "description": "Retrieves all comments. Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
         "tags": [
           "CRUDA"
         ],
@@ -791,16 +1281,62 @@
         ],
         "responses": {
           "200": {
-            "description": "Comments retrieved successfully"
+            "description": "Comments retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "comments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "ulid"
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
-            "description": "Authentication required"
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       },
       "get": {
         "summary": "List all comments (GET)",
-        "description": "Retrieves all comments via GET Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
+        "description": "Retrieves all comments via GET. Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
         "tags": [
           "CRUDA"
         ],
@@ -811,10 +1347,56 @@
         ],
         "responses": {
           "200": {
-            "description": "Comments retrieved successfully"
+            "description": "Comments retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "comments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "ulid"
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
-            "description": "Authentication required"
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -822,7 +1404,7 @@
     "/api/cruda/read": {
       "post": {
         "summary": "Read specific comment",
-        "description": "Retrieves a specific comment by ID Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
+        "description": "Retrieves a specific comment by ID in the JSON body. Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
         "tags": [
           "CRUDA"
         ],
@@ -852,13 +1434,57 @@
         },
         "responses": {
           "200": {
-            "description": "Comment retrieved successfully"
+            "description": "Comment retrieved"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Authentication required"
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Comment not found"
+            "description": "Comment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -866,7 +1492,7 @@
     "/api/cruda/read/{id}": {
       "get": {
         "summary": "Read specific comment (by path param)",
-        "description": "Retrieves a specific comment by ID Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
+        "description": "Retrieves a specific comment by path ID. Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
         "tags": [
           "CRUDA"
         ],
@@ -888,13 +1514,47 @@
         ],
         "responses": {
           "200": {
-            "description": "Comment retrieved successfully"
+            "description": "Comment retrieved"
           },
           "401": {
-            "description": "Authentication required"
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Comment not found"
+            "description": "Comment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -902,53 +1562,7 @@
     "/api/cruda/update": {
       "post": {
         "summary": "Update comment",
-        "description": "Updates an existing comment Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
-        "tags": [
-          "CRUDA"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "id"
-                ],
-                "properties": {
-                  "id": {
-                    "type": "integer",
-                    "description": "Comment ID"
-                  },
-                  "comment": {
-                    "type": "string",
-                    "description": "Updated comment text"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Comment updated successfully"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "404": {
-            "description": "Comment not found"
-          }
-        }
-      },
-      "put": {
-        "summary": "Update comment (PUT)",
-        "description": "Updates an existing comment via PUT Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
+        "description": "Updates an existing comment. Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
         "tags": [
           "CRUDA"
         ],
@@ -983,13 +1597,148 @@
         },
         "responses": {
           "200": {
-            "description": "Comment updated successfully"
+            "description": "Comment updated"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Authentication required"
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Comment not found"
+            "description": "Comment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update comment (PUT)",
+        "description": "Updates an existing comment via PUT. Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
+        "tags": [
+          "CRUDA"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "comment"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "Comment ID"
+                  },
+                  "comment": {
+                    "type": "string",
+                    "description": "Updated comment text"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Comment updated"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Comment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -997,7 +1746,7 @@
     "/api/cruda/destroy": {
       "post": {
         "summary": "Delete comment",
-        "description": "Deletes an existing comment Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
+        "description": "Deletes an existing comment. Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
         "tags": [
           "CRUDA"
         ],
@@ -1027,19 +1776,63 @@
         },
         "responses": {
           "200": {
-            "description": "Comment deleted successfully"
+            "description": "Comment deleted"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Authentication required"
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Comment not found"
+            "description": "Comment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       },
       "delete": {
         "summary": "Delete comment (DELETE)",
-        "description": "Deletes an existing comment via DELETE Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
+        "description": "Deletes an existing comment via DELETE. Requires a JWT minted by **this** peer plus METHOD_PERMISSION_MAP authorization. Sample protected resource for the federated auth pattern — replace with your domain.",
         "tags": [
           "CRUDA"
         ],
@@ -1069,13 +1862,57 @@
         },
         "responses": {
           "200": {
-            "description": "Comment deleted successfully"
+            "description": "Comment deleted"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Authentication required"
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Comment not found"
+            "description": "Comment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -1083,7 +1920,7 @@
     "/api/sessions/list_all": {
       "get": {
         "summary": "List all sessions",
-        "description": "Get information about all active sessions (admin only)",
+        "description": "Lists active sessions. Requires peer JWT and METHOD_PERMISSION_MAP `list_all`.",
         "tags": [
           "Sessions"
         ],
@@ -1094,13 +1931,59 @@
         ],
         "responses": {
           "200": {
-            "description": "Sessions retrieved successfully"
+            "description": "Active sessions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "count": {
+                      "type": "integer"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
-            "description": "Authentication required"
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Permission denied"
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to retrieve sessions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -1108,7 +1991,7 @@
     "/api/sessions/revoke": {
       "post": {
         "summary": "Revoke specific session",
-        "description": "Force terminate a specific session (admin only)",
+        "description": "Force-terminate a session. Requires peer JWT, JSON body, and METHOD_PERMISSION_MAP `revoke`.",
         "tags": [
           "Sessions"
         ],
@@ -1142,16 +2025,67 @@
         },
         "responses": {
           "200": {
-            "description": "Session terminated successfully"
+            "description": "Session terminated"
+          },
+          "400": {
+            "description": "Missing sessionId",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Authentication required"
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Permission denied"
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Session not found"
+            "description": "Session not found or already terminated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Content-Type must be application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to terminate session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -1159,7 +2093,7 @@
     "/api/sessions/cleanup": {
       "post": {
         "summary": "Cleanup expired sessions",
-        "description": "Run manual cleanup of expired sessions (admin only)",
+        "description": "Cleanup expired sessions. Requires peer JWT, Content-Type application/json, and METHOD_PERMISSION_MAP `cleanup`.",
         "tags": [
           "Sessions"
         ],
@@ -1170,13 +2104,58 @@
         ],
         "responses": {
           "200": {
-            "description": "Cleanup completed successfully"
+            "description": "Cleanup completed"
           },
           "401": {
-            "description": "Authentication required"
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Permission denied"
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Content-Type must be application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Session cleanup failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "JSON body required (may be empty).",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
           }
         }
       }
@@ -1195,10 +2174,54 @@
         ],
         "responses": {
           "200": {
-            "description": "Metrics retrieved successfully"
+            "description": "Metrics retrieved"
           },
           "401": {
-            "description": "Authentication required"
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to retrieve metrics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "head": {
+        "summary": "Metrics probe",
+        "description": "Empty 200 for authenticated health/benchmark probes.",
+        "tags": [
+          "Metrics"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -1217,10 +2240,54 @@
         ],
         "responses": {
           "200": {
-            "description": "System metrics retrieved successfully"
+            "description": "System metrics retrieved"
           },
           "401": {
-            "description": "Authentication required"
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to retrieve system metrics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "head": {
+        "summary": "System metrics probe",
+        "description": "Empty 200 for authenticated probes.",
+        "tags": [
+          "Metrics"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -1242,10 +2309,74 @@
             "description": "Metrics reset successfully"
           },
           "401": {
-            "description": "Authentication required"
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Permission denied - admin required"
+            "description": "Admin permission required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to reset metrics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/metrics/debug": {
+      "get": {
+        "summary": "Metrics system debug",
+        "description": "Authenticated snapshot of the metrics/performance service wiring.",
+        "tags": [
+          "Metrics",
+          "Debug"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Debug payload"
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to retrieve debug information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -1254,11 +2385,11 @@
   "tags": [
     {
       "name": "Authentication",
-      "description": "Federated peer login for IdentyClaw Passport holders: challenge, mint JWT, logout, signclient"
+      "description": "Federated peer login for IdentyClaw Passport holders: challenge, mint JWT, logout"
     },
     {
       "name": "System",
-      "description": "Health and discovery-facing system endpoints"
+      "description": "Health, discovery, homepage, and OpenAPI explorer surfaces"
     },
     {
       "name": "CRUDA",
@@ -1274,15 +2405,11 @@
     },
     {
       "name": "MCP",
-      "description": "Public agent documentation resources for peer login (OpenClaw / shell). Not IdentyClaw home MCP."
+      "description": "Public agent documentation (`/api/mcp/*`, `/.well-known/mcp`) and streamable HTTP `/mcp`. Not IdentyClaw home MCP."
     },
     {
       "name": "Debug",
       "description": "Development helpers such as token claims inspection"
-    },
-    {
-      "name": "RODiT Configuration",
-      "description": "RODiT configuration surfaces (if exposed)"
     }
   ]
 }

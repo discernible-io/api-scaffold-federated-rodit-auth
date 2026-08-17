@@ -85,7 +85,8 @@ router.get('/', authenticate_apicall, async (req, res) => {
       sessionDebugInfo.availableMethods = Object.getOwnPropertyNames(Object.getPrototypeOf(sessionManager));
       
     } catch (error) {
-      logger.warn('Could not retrieve session count', { 
+      logger.warnWithContext("Could not retrieve session count", {
+        component: "MetricsRoutes",
         error: error.message,
         sessionManagerType: sessionManager?.constructor?.name,
         availableMethods: sessionManager ? Object.getOwnPropertyNames(Object.getPrototypeOf(sessionManager)) : []

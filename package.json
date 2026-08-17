@@ -23,20 +23,12 @@
   "scripts": {
     "preinstall": "node scripts/enforce-minimum-package-age.js",
     "start": "nodemon src/app.js",
-    "update:permissions": "node scripts/update-permissionsmap.js --all-environments",
-    "validate:permissions": "node scripts/update-permissionsmap.js --validate --all-environments"
+    "update:permissions": "node scripts/update-permissionsmap.js",
+    "validate:permissions": "node scripts/update-permissionsmap.js --validate"
   },
   "overrides": {
     "undici": "^6.24.1"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/discernible-io/api-idc.git"
-  },
   "author": "Discernible Ltd",
-  "license": "UNLICENSED",
-  "bugs": {
-    "url": "https://github.com/discernible-io/api-idc/issues"
-  },
-  "homepage": "https://github.com/discernible-io/api-idc#readme"
+  "license": "UNLICENSED"
 }

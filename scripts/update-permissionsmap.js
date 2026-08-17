@@ -3,17 +3,13 @@
  * Permission Map Generator
  * Copyright (c) 2026 Discernible, Inc. All rights reserved.
  *
- * Generates METHOD_PERMISSION_MAP from api-docs/swagger.json into the active
- * environment config file: config/development.json or config/main.json.
+ * Generates METHOD_PERMISSION_MAP from api-docs/swagger.json into
+ * config/default.json.
  *
  * Usage:
- *   NODE_ENV=development node scripts/update-permissionsmap.js              # update development.json
- *   NODE_ENV=main node scripts/update-permissionsmap.js --permissions         # update main.json (CI)
- *   node scripts/update-permissionsmap.js --validate                          # validate active NODE_ENV file
- *   node scripts/update-permissionsmap.js --permissions --all-environments    # update both (local / commit)
- *   node scripts/update-permissionsmap.js --env=main --validate               # explicit env override
+ *   node scripts/update-permissionsmap.js
+ *   node scripts/update-permissionsmap.js --validate
  *
- * Each branch uses a complete config/<NODE_ENV>.json file (no shared default layer in git).
  * See docs/configuration-standard.md (Generated METHOD_PERMISSION_MAP).
  */
 
@@ -22,27 +18,13 @@ const path = require('path');
 
 const args = process.argv.slice(2);
 const validateOnly = args.includes('--validate');
-const allEnvironments = args.includes('--all-environments');
-const envArg = args.find((a) => a.startsWith('--env='))?.slice('--env='.length);
 
 const ROOT = path.join(__dirname, '..');
 const SWAGGER_PATH = path.join(ROOT, 'api-docs', 'swagger.json');
-const ALLOWED_ENVS = ['development', 'main'];
+const DEFAULT_CONFIG_PATH = path.join(ROOT, 'config', 'default.json');
 
 function resolveConfigPaths() {
-  if (allEnvironments) {
-    return ALLOWED_ENVS.map((env) => path.join(ROOT, 'config', `${env}.json`));
-  }
-
-  const nodeEnv = envArg || process.env.NODE_ENV;
-  if (!nodeEnv || !ALLOWED_ENVS.includes(nodeEnv)) {
-    console.error(
-      '❌ Set NODE_ENV to "development" or "main", pass --env=development|main, or use --all-environments.'
-    );
-    return null;
-  }
-
-  return [path.join(ROOT, 'config', `${nodeEnv}.json`)];
+  return [DEFAULT_CONFIG_PATH];
 }
 
 // ============================================================================
@@ -227,11 +209,7 @@ function updatePermissions() {
   if (!configPaths) return false;
 
   console.log('\n=== Updating METHOD_PERMISSION_MAP ===\n');
-  if (allEnvironments) {
-    console.log('Target: all environment config files\n');
-  } else {
-    console.log(`Target: ${path.basename(configPaths[0])} (NODE_ENV=${envArg || process.env.NODE_ENV})\n`);
-  }
+  console.log(`Target: ${path.basename(configPaths[0])}\n`);
 
   let swaggerSpec;
   try {
@@ -306,6 +284,5 @@ if (require.main === module) {
 module.exports = {
   updatePermissions,
   generatePermissionMap,
-  resolveConfigPaths,
-  ALLOWED_ENVS
+  resolveConfigPaths
 };

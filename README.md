@@ -63,7 +63,6 @@ Public agent guides (no JWT): `GET /api/mcp/resource/doc:skills`, `GET /.well-kn
 | Surface | Role in the pattern |
 | --- | --- |
 | `/api/login/timestamp`, `/api/login`, `/api/logout` | Federated challenge-response JWT mint |
-| `/api/signclient` | Mint/sign client RODiT scoped to this peer’s routes |
 | `/api/token/claims` | Verify peer JWT after login |
 | `/api/cruda/*` | **Sample** protected resource (auth + `METHOD_PERMISSION_MAP`) |
 | `/api/sessions/*` | Privileged session admin pattern |
@@ -86,7 +85,7 @@ Authorization for CRUDA uses `METHOD_PERMISSION_MAP` in `config/*.json` (`create
 ```bash
 npm install
 # NEAR / RODiT server credentials — see config/custom-environment-variables.json
-NODE_ENV=development npm start
+npm start
 ```
 
 Listens on `SERVERPORT` (default **8080**). Behind nginx TLS typically **8443**.
@@ -106,12 +105,12 @@ curl -s "$BASE/api/cruda/list" -H "Authorization: Bearer $JWT" -H "Content-Type:
 
 ```
 src/app.js                 # bootstrap, mounts authenticate + authorize
-src/routes/                # login, discovery, MCP docs, signclient, sessions
+src/routes/                # login, discovery, MCP docs, sessions
 src/protected/cruda.js     # sample protected resource
 src/protected/metricsroutes.js
 src/middleware/            # request validation, rate limits
 src/services/              # health, NEAR probe, MCP HTTP, startup config
-config/                    # main / development / env mapping
+config/                    # default.json + env mapping
 api-docs/swagger.json      # federated peer OpenAPI contract
 ```
 
@@ -120,10 +119,14 @@ api-docs/swagger.json      # federated peer OpenAPI contract
 | Document | Summary |
 | --- | --- |
 | [`api-docs/swagger.json`](api-docs/swagger.json) | OpenAPI 3.0 — federation model + auth contract |
+| [`docs/documentation-standard.md`](docs/documentation-standard.md) | How docs are written, indexed, and cross-referenced |
 | [`docs/configuration-standard.md`](docs/configuration-standard.md) | Config sources and secrets |
-| [`docs/error-handling-standard.md`](docs/error-handling-standard.md) | Error envelope |
 | [`docs/logging-standard.md`](docs/logging-standard.md) | Winston / Loki |
-| [`docs/BRANCHING.md`](docs/BRANCHING.md) | Branch roles |
+| [`docs/error-handling-standard.md`](docs/error-handling-standard.md) | Error envelope |
+| [`docs/allowed-fallback-standard.md`](docs/allowed-fallback-standard.md) | Permitted config and RPC fallbacks |
+| [`docs/cicd-deployment-standard.md`](docs/cicd-deployment-standard.md) | Local Podman deploy, host secrets/TLS |
+| [`docs/rpc-configuration.md`](docs/rpc-configuration.md) | `NEAR_NETWORK_CONFIG` options for `roditwallet.sh` |
+| [`docs/planned-improvements.md`](docs/planned-improvements.md) | Improvement backlog |
 | [`docs/security-compliance.md`](docs/security-compliance.md) | Compliance notes |
 | [`scripts/README-database-init.md`](scripts/README-database-init.md) | SQLite init |
 

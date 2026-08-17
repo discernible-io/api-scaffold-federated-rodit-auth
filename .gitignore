@@ -26,6 +26,10 @@ Cargo.lock
 # Keys and credentials
 **/neardev/
 certs/
+/logs/
+/data/
+/secrets/
+secrets.env
 privatekey
 publickey
 dev-account

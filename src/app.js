@@ -75,18 +75,23 @@ function createLokiLineFormat() {
 
 const SERVICE_NAME = config.get("SERVICE_NAME");
 const HEALTH_CHECKS_CACHE_MS = Number(config.get("HEALTH_CHECKS_CACHE_MS"));
-const isMainTier = () => config.get("NODE_ENV") === "main";
+const includeDebugDetails = () => config.get("LOG_LEVEL") === "debug";
 
-function tierSwaggerServerUrl() {
+function applySelectedNearRpcUrl(selectedRpcUrl) {
+  // SDK config.getResolved reads process.env first (configuration-standard priority 1).
+  // @rodit/rodit-auth-be has no config.set; this write is the supported override path.
+  process.env.NEAR_RPC_URL = selectedRpcUrl;
+  return "environment";
+}
+
+function peerSwaggerServerUrl() {
   const publicPort = config.has("PUBLIC_PORT") ? config.get("PUBLIC_PORT") : "8443";
   return `https://${SERVICE_NAME}:${publicPort}`;
 }
 
 function abortSessionStorageSetup(message, context, error) {
   logger.errorWithContext(message, context, error);
-  if (isMainTier()) {
-    process.exit(1);
-  }
+  process.exit(1);
 }
 
 // Configure winston-loki logging BEFORE creating RoditClient
@@ -182,7 +187,6 @@ const homeRoute = require("./routes/home");
 const authPublicRoutes = require("./routes/auth.public.routes");
 const agentPublicRoutes = require("./routes/agent.public.routes");
 const discoveryRoutes = require("./routes/discovery.public.routes");
-const signclientRoute = require("./routes/signclient");
 const mcpRoutes = require("./routes/mcp.public.routes");
 
 // Import protected routes (require authentication)
@@ -236,12 +240,6 @@ try {
       table: 'sessions',
       persistent: true
     });
-  } else if (!isMainTier()) {
-    logger.warnWithContext('Using default in-memory session storage', {
-      component: 'SessionStorage',
-      storageType: 'InMemorySessionStorage',
-      persistent: false
-    });
   }
 } catch (e) {
   abortSessionStorageSetup(
@@ -252,11 +250,13 @@ try {
 }
 
 // Log application startup
-logger.info("Starting RODiT Authentication API Server", {
-  nodeEnv: config.get('NODE_ENV'),
+logger.infoWithContext("Starting RODiT Authentication API Server", {
+  component: "AppLifecycle",
+  operation: "startup",
+  logLevel: config.get("LOG_LEVEL"),
   pid: process.pid,
-  version: config.has('npm_package_version') ? config.get('npm_package_version') : 'unknown',
-  nodeVersion: process.version,
+  version: config.has("npm_package_version") ? config.get("npm_package_version") : "unknown",
+  nodeVersion: process.version
 });
 
 // Initialize application
@@ -272,17 +272,19 @@ app.use((req, res, next) => {
 // Mount public routes
 app.use("/", discoveryRoutes);
 app.use("/api", homeRoute);
-app.use("/api", signclientRoute);
 app.use("/api/mcp", mcpRoutes);
 
 // Import additional protected routes
 const crudaRoutes = require("./protected/cruda");
 
 // Development environment logging
-const LOG_LEVEL = config.get('LOG_LEVEL', 'info');
-const isProduction = ['info', 'warn', 'error'].includes(LOG_LEVEL);
-if (!isProduction) {
-  logger.info("Running in development mode - enhanced logging enabled");
+const LOG_LEVEL = config.get("LOG_LEVEL", "info");
+if (LOG_LEVEL === "debug") {
+  logger.infoWithContext("Debug log level enabled", {
+    component: "AppLifecycle",
+    operation: "startup.logLevel",
+    logLevel: LOG_LEVEL
+  });
 }
 
 // Use SDK-provided rate limiting helper
@@ -444,7 +446,7 @@ function setupFallbackHandlers() {
     const crypto = require("crypto");
     const requestId = req.requestId || ulid();
     const traceId = req.traceId || crypto.randomUUID();
-    const omitStack = isMainTier();
+    const omitStack = !includeDebugDetails();
 
     logger.errorWithContext(
       "Server error occurred",
@@ -563,22 +565,22 @@ function updateSwaggerServers(subjectuniqueidentifier_url) {
         serverUrl: subjectuniqueidentifier_url,
       });
     } else {
-      const tierUrl = tierSwaggerServerUrl();
+      const peerUrl = peerSwaggerServerUrl();
       swaggerSpec.servers = [
         {
-          url: tierUrl,
-          description: `${SERVICE_NAME} (${config.get("NODE_ENV")} tier)`,
+          url: peerUrl,
+          description: SERVICE_NAME,
         },
       ];
 
       logger.warnWithContext(
-        "No valid API URL in RODIT token; using tier server URL from config",
+        "No valid API URL in RODIT token; using SERVICE_NAME from config",
         {
           requestId,
           component: "SwaggerConfig",
           event: "updateSwaggerServers",
           apiUrl: subjectuniqueidentifier_url,
-          serverUrl: tierUrl,
+          serverUrl: peerUrl,
         }
       );
     }
@@ -590,11 +592,11 @@ function updateSwaggerServers(subjectuniqueidentifier_url) {
       apiUrl: subjectuniqueidentifier_url,
     }, error);
 
-    const tierUrl = tierSwaggerServerUrl();
+    const peerUrl = peerSwaggerServerUrl();
     swaggerSpec.servers = [
       {
-        url: tierUrl,
-        description: `${SERVICE_NAME} (${config.get("NODE_ENV")} tier, error fallback)`,
+        url: peerUrl,
+        description: `${SERVICE_NAME} (config fallback)`,
       },
     ];
   }
@@ -622,17 +624,13 @@ async function displayRoditInfo(configObject) {
       "unknown";
     const network = nearContractId.includes("testnet") ? "testnet" : "mainnet";
 
-    logger.info("\n=== RODiT Authentication System ===");
-    logger.info(
-      `Version ${sdkVersion.replace(
-        "^",
-        ""
-      )} running on ${network} at Smart Contract ${nearContractId}`
-    );
-    logger.info("Get help with: npm run help\n");
-
-    logger.info("RODiT Contents");
-    logger.info("▹▸▹▹▹ Authentication token information loaded...\n");
+    logger.infoWithContext("RODiT authentication system ready", {
+      component: "RoditInfo",
+      operation: "displayRoditInfo",
+      sdkVersion: sdkVersion.replace("^", ""),
+      network,
+      contractId: nearContractId
+    });
 
     // Display token information in a structured format
     const roditData = {
@@ -658,8 +656,12 @@ async function displayRoditInfo(configObject) {
     };
 
     // Log the RODIT data in a structured context for better indexing
-    logger.infoWithContext("RODIT token information", roditData);
-    logger.info("");
+    logger.infoWithContext("RODIT token information", {
+      component: "RoditInfo",
+      operation: "displayRoditInfo",
+      tokenId: token_id,
+      metadata: roditData.metadata
+    });
 
     // Update Swagger servers configuration with the API URL from RODIT token
     updateSwaggerServers(metadata.subjectuniqueidentifier_url);
@@ -700,9 +702,10 @@ async function displayRoditInfo(configObject) {
     );
 
     // Don't throw the error - just log it and continue
-    logger.warn(
-      "RODIT token information could not be displayed, continuing with startup..."
-    );
+    logger.warnWithContext("RODIT token information could not be displayed; continuing startup", {
+      component: "RoditInfo",
+      operation: "displayRoditInfo"
+    });
   }
 }
 
@@ -715,7 +718,7 @@ async function startServer() {
     requestId,
     component: "AppLifecycle",
     event: "startServer",
-    nodeEnv: config.get('NODE_ENV'),
+    logLevel: config.get("LOG_LEVEL"),
     pid: process.pid,
   });
 
@@ -728,19 +731,21 @@ async function startServer() {
       component: "AppLifecycle",
       event: "startServer",
       status: "initializing",
-      nodeEnv: config.get('NODE_ENV'),
+      logLevel: config.get("LOG_LEVEL"),
       pid: process.pid,
     });
 
     // Initialize RODiT SDK properly
-    logger.debug("RoditClient constructor completed", {
+    logger.debugWithContext("RoditClient constructor completed", {
       component: "AppLifecycle",
-      status: "constructor_done",
+      operation: "startup.createClient",
+      status: "constructor_done"
     });
 
-    logger.debug("Creating and initializing RODiT client", {
+    logger.debugWithContext("Creating and initializing RODiT client", {
       component: "AppLifecycle",
-      status: "creating_client",
+      operation: "startup.createClient",
+      status: "creating_client"
     });
 
     const primaryRpcUrl = config.has("NEAR_RPC_URL") ? config.get("NEAR_RPC_URL") : null;
@@ -756,7 +761,7 @@ async function startServer() {
     }
 
     if (selectedRpcUrl && selectedRpcUrl !== primaryRpcUrl) {
-      process.env.NEAR_RPC_URL = selectedRpcUrl;
+      const appliedVia = applySelectedNearRpcUrl(selectedRpcUrl);
       const probeTimeoutMs = Number(config.get("NEAR_RPC_TIMEOUT"));
       let primaryProbeOk = null;
       if (primaryRpcUrl) {
@@ -770,6 +775,7 @@ async function startServer() {
         selectedSource: "resolveHealthyNearRpcUrl",
         primaryRpcHost: redactRpcHostLabel(primaryRpcUrl),
         selectedRpcHost: redactRpcHostLabel(selectedRpcUrl),
+        appliedVia,
         ...(primaryProbeOk === false && { primaryProbeFailed: true })
       };
       if (primaryProbeOk === false) {
@@ -797,8 +803,9 @@ async function startServer() {
       return roditClient.authorize(req, res, next);
     };
 
-    logger.info("Authentication middleware initialized", {
+    logger.infoWithContext("Authentication middleware initialized", {
       component: "AppLifecycle",
+      operation: "startup.middleware",
       status: "middleware_ready"
     });
 
@@ -869,28 +876,30 @@ async function startServer() {
 
     setupFallbackHandlers();
     
-    logger.info("Protected routes mounted", {
-      component: "AppLifecycle", 
+    logger.infoWithContext("Protected routes mounted", {
+      component: "AppLifecycle",
+      operation: "startup.routes",
       status: "routes_mounted"
     });
 
-    // Get and apply configuration
-    logger.debug("Attempting to retrieve RODiT configuration", {
+    logger.debugWithContext("Attempting to retrieve RODiT configuration", {
       component: "AppLifecycle",
-      status: "getting_config",
+      operation: "startup.getConfigOwnRodit",
+      status: "getting_config"
     });
     
     const configObject = await roditClient.getConfigOwnRodit();
     if (!configObject) {
-      logger.error("RODiT configuration not found - no credentials available", {
+      logger.errorWithContext("RODiT configuration not found - no credentials available", {
         component: "AppLifecycle",
+        operation: "startup.getConfigOwnRodit",
         status: "config_missing",
         suggestion: "Check Vault credentials or RODIT_NEAR_CREDENTIALS_SOURCE setting"
       });
       throw new Error("Failed to initialize RODiT configuration");
     }
 
-    logger.info("RODiT configuration successfully loaded", {
+    logger.infoWithContext("RODiT configuration successfully loaded", {
       component: "AppLifecycle",
       status: "config_loaded",
       hasOwnRodit: !!(configObject && configObject.own_rodit)
@@ -923,7 +932,7 @@ async function startServer() {
           duration: serverStartDuration,
           protocol: "http",
           swagger: `/api-docs`,
-          nodeEnv: config.get('NODE_ENV'),
+          logLevel: config.get("LOG_LEVEL"),
           pid: process.pid,
         }
       );
@@ -934,24 +943,23 @@ async function startServer() {
         result: "success",
       });
 
-      logger.info(`\nRODiT Authentication API Server running on port ${port}`);
-
-      const endpoints = [
-        "  / - API discovery (agentGuide, OpenClaw login paths)",
-        "  /.well-known/mcp - MCP discovery for agents",
-        "  GET /api/login/timestamp - Login challenge (timestamp pair)",
-        "  POST /api/login - Login with RODiT credentials",
-        "  GET /api/mcp/resources - Public MCP doc list (no JWT)",
-        "  GET /api/mcp/resource/doc:skills - Agent login cheat sheet",
-        "  POST /api/logout - Logout (Bearer JWT; expired tokens allowed)",
-        "  /api/cruda - CRUDA showcase (requires authentication + permissions)",
-        "  /api/sessions - Session admin (authenticate + authorize)",
-        "  /api-docs - Swagger API documentation",
-      ];
-
-      logger.info("Available endpoints:");
-      endpoints.forEach((endpoint) => logger.info(endpoint));
-      logger.info("");
+      logger.infoWithContext("HTTP server listening", {
+        component: "AppLifecycle",
+        operation: "startup.listen",
+        port,
+        endpoints: [
+          "/",
+          "/.well-known/mcp",
+          "GET /api/login/timestamp",
+          "POST /api/login",
+          "GET /api/mcp/resources",
+          "GET /api/mcp/resource/doc:skills",
+          "POST /api/logout",
+          "/api/cruda",
+          "/api/sessions",
+          "/api-docs"
+        ]
+      });
 
       logNginxPublicRateLimitSettings(logger);
       setTimeout(() => {
@@ -972,7 +980,7 @@ async function startServer() {
         component: "AppLifecycle",
         event: "startServer",
         duration,
-        nodeEnv: config.get('NODE_ENV'),
+        logLevel: config.get("LOG_LEVEL"),
         pid: process.pid,
       },
       error,
@@ -1253,12 +1261,15 @@ async function getOpenApiSpec(client) {
     return client.openApiSpec;
   } catch (error) {
     const logger = client.getLogger();
-    logger.error('Failed to fetch OpenAPI specification', {
-      component: 'App',
-      method: 'getOpenApiSpec',
-      url: client.openApiUrl,
-      error: error.message
-    });
+    logger.errorWithContext(
+      "Failed to fetch OpenAPI specification",
+      {
+        component: "App",
+        operation: "getOpenApiSpec",
+        url: client.openApiUrl
+      },
+      error instanceof Error ? error : new Error(String(error?.message || error))
+    );
     throw error;
   }
 }

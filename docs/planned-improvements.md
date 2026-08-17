@@ -13,5 +13,5 @@ Cross-service backlog referenced by the standards. Items are numbered for stable
 
 ## Notes
 
-- Track progress in the consuming service repository; this file lives in **discernible-io/docs** for shared visibility.
+- Track progress in this repository. Keep item numbers stable (other docs may cite them).
 - When an item is completed in a service, note the service name and date in the **Status** column or close the row—do not delete the number (other docs may cite it).

@@ -6,7 +6,7 @@
 
 ## Overview
 
-The `init-database.sh` script initializes the SQLite database for the api-idc application. It handles both development and production deployment scenarios.
+The `init-database.sh` script initializes the SQLite database for the api-idc application. It handles both local development and container-volume (host `APP_DIR`) deployment.
 
 ## Quick Start
 
@@ -14,7 +14,7 @@ The `init-database.sh` script initializes the SQLite database for the api-idc ap
 # Development (local testing)
 ./scripts/init-database.sh
 
-# Production deployment (container volume)
+# Container volume (host APP_DIR)
 sudo ./scripts/init-database.sh --deployment
 ```
 
@@ -38,10 +38,10 @@ sudo ./scripts/init-database.sh --deployment
 | Mode | Database Path | Owner | Purpose |
 |------|--------------|-------|---------|
 | Development | `./data/database.sqlite` | Your user | Local testing |
-| Deployment | `~/syntheticlc-app/data/database.sqlite` | UID 100999 | Container volume |
+| Deployment | `~/api-idc-app/data/database.sqlite` | UID 100999 | Container volume |
 
 **Why different paths?**
-- Container mounts: `~/syntheticlc-app/data` → `/app/data`
+- Container mounts: `~/api-idc-app/data` → `/app/data`
 - The container ONLY sees the deployment path
 - Using wrong path = container uses old/incorrect database
 
@@ -120,8 +120,8 @@ npm install @rodit/rodit-auth-be@latest
 **Solution:**
 ```bash
 # Remove old sessions table and let connect-sqlite3 create it
-sudo sqlite3 ~/syntheticlc-app/data/database.sqlite "DROP TABLE IF EXISTS sessions;"
-podman restart syntheticlc-container
+sudo sqlite3 ~/api-idc-app/data/database.sqlite "DROP TABLE IF EXISTS sessions;"
+podman restart api-idc-container
 ```
 
 ### Issue 3: "SQLITE_READONLY: attempt to write a readonly database"
@@ -131,8 +131,8 @@ podman restart syntheticlc-container
 **Solution:**
 ```bash
 # Fix ownership for deployment
-sudo chown 100999:100999 ~/syntheticlc-app/data/database.sqlite
-sudo chmod 664 ~/syntheticlc-app/data/database.sqlite
+sudo chown 100999:100999 ~/api-idc-app/data/database.sqlite
+sudo chmod 664 ~/api-idc-app/data/database.sqlite
 ```
 
 ### Issue 4: Container uses old database after re-initialization
@@ -143,7 +143,7 @@ sudo chmod 664 ~/syntheticlc-app/data/database.sqlite
 ```bash
 # Reinitialize and restart container
 sudo ./scripts/init-database.sh --deployment
-podman restart syntheticlc-container
+podman restart api-idc-container
 ```
 
 ## Troubleshooting
@@ -152,20 +152,20 @@ podman restart syntheticlc-container
 
 ```bash
 # Check deployment database
-sudo ls -lh ~/syntheticlc-app/data/database.sqlite
+sudo ls -lh ~/api-idc-app/data/database.sqlite
 
 # Check container is using correct database
-podman exec syntheticlc-container ls -lh /app/data/database.sqlite
+podman exec api-idc-container ls -lh /app/data/database.sqlite
 ```
 
 ### Inspect Database Schema
 
 ```bash
 # List all tables
-sudo sqlite3 ~/syntheticlc-app/data/database.sqlite ".tables"
+sudo sqlite3 ~/api-idc-app/data/database.sqlite ".tables"
 
 # Check sessions table schema (should exist after first use)
-sudo sqlite3 ~/syntheticlc-app/data/database.sqlite "PRAGMA table_info(sessions);"
+sudo sqlite3 ~/api-idc-app/data/database.sqlite "PRAGMA table_info(sessions);"
 
 # Expected output:
 # 0|sid||0||1
@@ -177,10 +177,10 @@ sudo sqlite3 ~/syntheticlc-app/data/database.sqlite "PRAGMA table_info(sessions)
 
 ```bash
 # Look for errors
-podman logs --tail 50 syntheticlc-container | grep -i "error\|sqlite"
+podman logs --tail 50 api-idc-container | grep -i "error\|sqlite"
 
 # Verify sessions table creation
-podman logs syntheticlc-container | grep -i "session"
+podman logs api-idc-container | grep -i "session"
 ```
 
 ## Deployment Workflow
@@ -191,14 +191,14 @@ podman logs syntheticlc-container | grep -i "session"
 # 1. Initialize deployment database
 sudo ./scripts/init-database.sh --deployment
 
-# 2. Deploy application (via GitHub Actions or manually)
-git push origin main
+# 2. Deploy application (local Podman or your orchestrator)
+./scripts/deploy-local-podman.sh
 
 # 3. Verify container started successfully
-podman ps | grep syntheticlc-container
+podman ps | grep api-idc-container
 
 # 4. Check sessions table was auto-created
-sudo sqlite3 ~/syntheticlc-app/data/database.sqlite ".tables"
+sudo sqlite3 ~/api-idc-app/data/database.sqlite ".tables"
 # Should show: comments  metrics  sessions
 ```
 
@@ -206,31 +206,32 @@ sudo sqlite3 ~/syntheticlc-app/data/database.sqlite ".tables"
 
 ```bash
 # 1. Stop container
-podman stop syntheticlc-container
+podman stop api-idc-container
 
 # 2. Backup existing database
-sudo cp ~/syntheticlc-app/data/database.sqlite \
-     ~/syntheticlc-app/data/database.sqlite.backup.$(date +%Y%m%d)
+sudo cp ~/api-idc-app/data/database.sqlite \
+     ~/api-idc-app/data/database.sqlite.backup.$(date +%Y%m%d)
 
 # 3. Reinitialize database
 sudo ./scripts/init-database.sh --deployment
 
 # 4. Restart container
-podman restart syntheticlc-container
+podman restart api-idc-container
 ```
 
-## GitHub Actions Integration
+## First deploy
 
-The deployment workflow (`.github/workflows/deploy.yml`) handles database initialization automatically:
+Initialize the database on the host, then start the pod:
 
-```yaml
-# Ensure logs and data directories exist with correct permissions
-mkdir -p ~/syntheticlc-app/logs ~/syntheticlc-app/data
-podman unshare chown -R 1000:1000 ~/syntheticlc-app/logs ~/syntheticlc-app/data
-podman unshare chmod g+w ~/syntheticlc-app/data
+```bash
+mkdir -p ~/api-idc-app/logs ~/api-idc-app/data
+podman unshare chown -R 1000:1000 ~/api-idc-app/logs ~/api-idc-app/data
+podman unshare chmod g+w ~/api-idc-app/data
+sudo ./scripts/init-database.sh --deployment
+./scripts/deploy-local-podman.sh
 ```
 
-**Note:** The workflow does NOT run `init-database.sh` automatically. You must initialize the database manually on first deployment.
+`init-database.sh` is not run automatically by the pod script. Run it once before the first start.
 
 ## Security Considerations
 
@@ -242,7 +243,7 @@ podman unshare chmod g+w ~/syntheticlc-app/data
 ## Related Files
 
 - `scripts/init-database.sh` - Database initialization script
-- `.github/workflows/deploy.yml` - Automated deployment workflow
+- `scripts/deploy-local-podman.sh` - Local Podman deploy
 - `api.Dockerfile` - Container image definition
 - `src/app.js` - Session storage configuration
 - `src/protected/cruda.js` - Database access for CRUD operations
@@ -251,7 +252,7 @@ podman unshare chmod g+w ~/syntheticlc-app/data
 
 If you encounter issues not covered here:
 
-1. Check container logs: `podman logs syntheticlc-container`
-2. Verify database ownership: `sudo ls -lhn ~/syntheticlc-app/data/`
-3. Test database access: `sudo sqlite3 ~/syntheticlc-app/data/database.sqlite ".tables"`
+1. Check container logs: `podman logs api-idc-container`
+2. Verify database ownership: `sudo ls -lhn ~/api-idc-app/data/`
+3. Test database access: `sudo sqlite3 ~/api-idc-app/data/database.sqlite ".tables"`
 4. Review this guide's troubleshooting section

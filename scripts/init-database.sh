@@ -2,7 +2,7 @@
 # Database initialization script for api-idc
 # 
 # This script creates the SQLite database and initializes all tables for both
-# development and production deployment environments.
+# development and container-volume (host APP_DIR) environments.
 #
 # IMPORTANT NOTES:
 # ================
@@ -13,18 +13,18 @@
 #
 # 2. Deployment vs Development:
 #    - Development: Uses ./data/database.sqlite (local testing)
-#    - Deployment: Uses ~/syntheticlc-app/data/database.sqlite (container volume)
+#    - Deployment: Uses ~/api-idc-app/data/database.sqlite (container volume)
 #    - Ownership: Container runs as UID 100999 (nodeuser via podman unshare)
 #    - Permissions: 664 (rw-rw-r--) for proper container access
 #
 # 3. Volume Mounting:
-#    - Container mounts: ~/syntheticlc-app/data -> /app/data
+#    - Container mounts: ~/api-idc-app/data -> /app/data
 #    - Database must exist in deployment directory BEFORE container starts
 #    - Wrong path = container uses old/incorrect database
 #
 # Usage:
 #   ./scripts/init-database.sh              # Development mode (./data/)
-#   ./scripts/init-database.sh --deployment # Deployment mode (~/syntheticlc-app/data/)
+#   ./scripts/init-database.sh --deployment # Deployment mode (~/api-idc-app/data/)
 
 set -euo pipefail
 
@@ -35,8 +35,8 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEPLOYMENT_MODE=false
 if [[ "${1:-}" == "--deployment" ]]; then
     DEPLOYMENT_MODE=true
-    DATA_DIR="${HOME}/syntheticlc-app/data"
-    LOGS_DIR="${HOME}/syntheticlc-app/logs"
+    DATA_DIR="${HOME}/api-idc-app/data"
+    LOGS_DIR="${HOME}/api-idc-app/logs"
     echo "Starting database initialization for api-idc (DEPLOYMENT MODE)"
 else
     DATA_DIR="${PROJECT_ROOT}/data"
@@ -163,12 +163,12 @@ if [ -f "${DB_PATH}" ] && [ -s "${DB_PATH}" ]; then
         if [ "$DEPLOYMENT_MODE" = true ]; then
             echo ""
             echo "🚀 Deployment Mode Active:"
-            echo "  • Container mount: ~/syntheticlc-app/data -> /app/data"
+            echo "  • Container mount: ~/api-idc-app/data -> /app/data"
             echo "  • Container user: nodeuser (UID 1000 -> host UID 100999)"
             echo "  • Restart container to pick up new database"
             echo ""
             echo "📦 To apply changes:"
-            echo "    podman restart syntheticlc-container"
+            echo "    podman restart api-idc-container"
         else
             echo ""
             echo "💻 Development Mode Active:"

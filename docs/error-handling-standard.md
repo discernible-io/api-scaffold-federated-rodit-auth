@@ -4,17 +4,14 @@
 
 **Created:** 2026-05-24
 
-**Status:** Target contract (aspirational for SignPortal `src/` today)  
-**Reference:** `@rodit/rodit-auth-be` `errorResponse.sendError` (when adopted); current routes in [`src/app.js`](../src/app.js), [`src/protected/signportal.js`](../src/protected/signportal.js), [`src/protected/signroot.js`](../src/protected/signroot.js)  
+**Status:** Implemented in this peer via `@rodit/rodit-auth-be` `errorResponse.sendError`  
+**Reference:** [`src/app.js`](../src/app.js), route modules under `src/routes/` and `src/protected/`  
 **Related:** [`logging-standard.md`](logging-standard.md) (canonical log `error` object)
 
-## Implementation status (consuming service)
+## Implementation status
 
-Typical state before migration (paths are service-relative when `docs/` is at the repo root):
-
-- Route handlers often use **`res.status(...).json({ error, message?, requestId })`** directly instead of `sendError()` from the SDK.
-- Global error middleware in [`src/app.js`](../src/app.js) may return a generic `500` body and log via `errorWithContext`.
-- Migration work is tracked in [`planned-improvements.md`](planned-improvements.md) (items 10–11).
+- Route handlers and global middleware (`415`, `404`, uncaught errors, malformed JSON) use `sendError()`.
+- Remaining work for other services is tracked in [`planned-improvements.md`](planned-improvements.md) (items 10–11).
 
 ---
 
@@ -70,9 +67,9 @@ STEPS:
   - DO: sendError(res, {
   - FIELD: statusCode: 400,
   - DO: requestId,
-  - FIELD: code: 'SIGNCLIENT_FEE_MISMATCH',
-  - FIELD: message: 'Minting fee does not match server calculation',
-  - FIELD: details: { clientFee: '0.05', serverFee: '0.10' }
+  - FIELD: code: 'CRUDA_COMMENT_TOO_LONG',
+  - FIELD: message: 'Comment exceeds the maximum allowed length',
+  - FIELD: details: { maxLength: 280, actualLength: 412 }
   - DO: })
 OUTPUTS:
   - Produces the section's intended result using equivalent logic.
@@ -226,11 +223,11 @@ INPUTS:
 STEPS:
   - {
   - FIELD: "error": {
-  - FIELD: "code": "SIGNCLIENT_FEE_MISMATCH",
-  - FIELD: "message": "Minting fee does not match server calculation",
+  - FIELD: "code": "CRUDA_COMMENT_TOO_LONG",
+  - FIELD: "message": "Comment exceeds the maximum allowed length",
   - FIELD: "details": {
-  - FIELD: "clientFee": "0.05",
-  - FIELD: "serverFee": "0.10"
+  - FIELD: "maxLength": 280,
+  - FIELD: "actualLength": 412
   - }
   - DO: },
   - FIELD: "requestId": "01HX9X0T9CS1EM0WQ7R6F5B2VY",

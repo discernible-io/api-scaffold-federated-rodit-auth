@@ -4,11 +4,10 @@ const path = require("path");
 const CONFIG_REDACT_SKIP_EXACT = new Set(["RODIT_NEAR_CREDENTIALS_SOURCE"]);
 const CONFIG_SECRET_PRESENT = "PRESENT-REDACTED";
 const CONFIG_SECRET_ABSENT = "ABSENT";
-const CONFIG_SNAPSHOT_SUPPLEMENT_KEYS = ["LOKI_URL", "LOKI_BASIC_AUTH", "NODE_ENV"];
+const CONFIG_SNAPSHOT_SUPPLEMENT_KEYS = ["LOKI_URL", "LOKI_BASIC_AUTH"];
 
 const NGINX_PUBLIC_RATE_LIMIT_CONF_PATHS = [
-  path.join(__dirname, "../../nginx/nginx.development.conf"),
-  path.join(__dirname, "../../nginx/nginx.main.conf")
+  path.join(__dirname, "../../nginx/nginx.conf")
 ];
 
 function isPlainObject(val) {

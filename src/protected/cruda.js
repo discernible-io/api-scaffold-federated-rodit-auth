@@ -13,6 +13,7 @@ const { ulid } = require("ulid"); // Adding ulid for request IDs
 // Logger methods are available directly on the logger object
 
 const DB_PATH = config.get("API_DEFAULT_OPTIONS.DB_PATH");
+const includeDebugDetails = () => config.get("LOG_LEVEL") === "debug";
 
 // Database connection
 let db;
@@ -134,7 +135,7 @@ const closeDatabase = async () => {
 // payload shape: { event: string, data?: any, isError?: boolean }
 const logAndSendWebhook = async (payload, req = null) => {
   // Add debug logging at the start
-  logger.debug("logAndSendWebhook called", {
+  logger.debugWithContext("logAndSendWebhook called", {
     component: "CRUDA",
     event: payload?.event,
     hasRequest: !!req,
@@ -147,7 +148,7 @@ const logAndSendWebhook = async (payload, req = null) => {
     const roditClient = req?.app?.locals?.roditClient;
     
     // Enhanced debug logging for roditClient availability
-    logger.debug("Checking roditClient availability", {
+    logger.debugWithContext("Checking roditClient availability", {
       component: "CRUDA",
       hasRoditClient: !!roditClient,
       hasAppLocals: !!req?.app?.locals,
@@ -156,7 +157,7 @@ const logAndSendWebhook = async (payload, req = null) => {
     });
     
     if (!roditClient) {
-      logger.warn("RoditClient not available in app.locals, skipping webhook", {
+      logger.warnWithContext("RoditClient not available in app.locals, skipping webhook", {
         component: "CRUDA",
         event: payload?.event,
         requestId: req?.requestId,
@@ -168,7 +169,7 @@ const logAndSendWebhook = async (payload, req = null) => {
     }
 
     // Debug log before calling send_webhook
-    logger.debug("About to call roditClient.send_webhook", {
+    logger.debugWithContext("About to call roditClient.send_webhook", {
       component: "CRUDA",
       event: payload?.event,
       requestId: req?.requestId,
@@ -180,7 +181,7 @@ const logAndSendWebhook = async (payload, req = null) => {
     const result = await roditClient.send_webhook(payload, req);
     
     // Debug log after successful call
-    logger.debug("roditClient.send_webhook completed", {
+    logger.debugWithContext("roditClient.send_webhook completed", {
       component: "CRUDA",
       event: payload?.event,
       requestId: req?.requestId,
@@ -246,7 +247,7 @@ const itemExists = async (req, res, next) => {
   const { id } = req.body;
 
   if (!id) {
-    logger.warn("Item existence check failed - no ID provided", {
+    logger.warnWithContext("Item existence check failed - no ID provided", {
       component: "CRUDARouter",
       method: "itemExists",
       requestId,
@@ -265,7 +266,7 @@ const itemExists = async (req, res, next) => {
     const comment = await db.get("SELECT * FROM comments WHERE id = ?", [id]);
 
     if (!comment) {
-      logger.warn("Item not found", {
+      logger.warnWithContext("Item not found", {
         component: "CRUDARouter",
         method: "itemExists",
         requestId,
@@ -305,7 +306,7 @@ const itemExists = async (req, res, next) => {
   }
 };
 
-// In-memory store for idempotency keys (in production, use Redis or database)
+// In-memory store for idempotency keys (use Redis or a database for durable deploys)
 const idempotencyStore = new Map();
 
 function isErrorResponseEnvelope(body) {
@@ -1418,7 +1419,7 @@ router.delete(
 router.get("/", (req, res) => {
   const requestId = req.headers["x-request-id"] || ulid();
 
-  logger.info("CRUDA endpoint info requested", {
+  logger.infoWithContext("CRUDA endpoint info requested", {
     component: "CRUDARoutes",
     method: "getInfo",
     requestId,
@@ -1453,7 +1454,7 @@ router.use((err, req, res, next) => {
     error: {
       name: err.name,
       message: err.message,
-      stack: config.get('NODE_ENV') === "development" ? err.stack : undefined,
+      stack: includeDebugDetails() ? err.stack : undefined,
     },
     path: req.path,
     method: req.method,
@@ -1465,7 +1466,7 @@ router.use((err, req, res, next) => {
     code: err.code || (statusCode >= 500 ? "CRUDA_OPERATION_FAILED" : "INVALID_REQUEST"),
     message: statusCode === 500 ? "Internal Server Error" : err.message,
     details:
-      config.get("NODE_ENV") === "development" && err.stack
+      includeDebugDetails() && err.stack
         ? { stack: err.stack }
         : undefined
   });

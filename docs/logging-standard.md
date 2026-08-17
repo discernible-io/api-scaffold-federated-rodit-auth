@@ -4,10 +4,10 @@
 
 **Created:** 2026-05-24
 
-Internal logging conventions for SignPortal and the `@rodit/rodit-auth-be` SDK.
+Internal logging conventions for this federated peer and the `@rodit/rodit-auth-be` SDK.
 This document is for contributors and operators, not public API consumers.
 
-**Related:** [`configuration-standard.md`](configuration-standard.md) — how `LOG_LEVEL`, `NODE_ENV`, and optional log shipping (`LOKI_URL`, etc.) are resolved.
+**Related:** [`configuration-standard.md`](configuration-standard.md) — how `LOG_LEVEL` and optional log shipping (`LOKI_URL`, etc.) are resolved.
 
 ## Implementation status (consuming service)
 
@@ -104,27 +104,24 @@ Does not apply to docs/examples where `console.*` snippets are instructional onl
   - `error`: failed operation, exception, or unavailable dependency.
 - Avoid emojis and decorative prefixes in main log messages.
 
-## Effective log level and environment (`LOG_LEVEL`, `NODE_ENV`)
+## Effective log level (`LOG_LEVEL`)
 
-Logging volume and verbosity are **not** hardcoded per environment in application logic. They follow the **same configuration resolution order** as every other tunable setting (environment variable → layered `config/` files including `NODE_ENV` → SDK fallbacks). See [`configuration-standard.md`](configuration-standard.md) for priority details.
+Logging volume and verbosity are **not** hardcoded in application logic. They follow the **same configuration resolution order** as every other tunable setting (environment variable → `config/default.json` → SDK fallbacks). See [`configuration-standard.md`](configuration-standard.md).
 
-**Example (typical service):** Winston/Loki injection in [`src/app.js`](../src/app.js) reads `LOG_LEVEL`, `LOKI_URL`, and related keys via `config.get` only (no `process.env` || `config.get` stacking).
+**Example:** Winston/Loki injection in [`src/app.js`](../src/app.js) reads `LOG_LEVEL`, `LOKI_URL`, and related keys via `config.get` only.
 
 **`LOG_LEVEL`**
 
-- **Source:** `config.get("LOG_LEVEL")` via `@rodit/rodit-auth-be` (with SDK fallbacks documented in that package).
+- **Source:** `config.get("LOG_LEVEL")` via `@rodit/rodit-auth-be`.
 - **Allowed values:** `error`, `warn`, `info`, `debug` (when the SDK runs startup validation).
-- **Effect:** The shared Winston logger uses this as its **maximum verbosity** threshold: messages below that level are not emitted on console (and on Loki, when configured). For example `info` hides `logger.debug(...)` calls; `debug` exposes them.
-- **Operators:** Prefer `LOG_LEVEL=debug` (or equivalent in `config/{NODE_ENV}.json`) only for short-lived troubleshooting, then revert to `info` or `warn` in steady-state main.
+- **Effect:** The shared Winston logger uses this as its **maximum verbosity** threshold. For example `info` hides `logger.debug(...)` calls; `debug` exposes them.
+- **Operators:** Prefer `LOG_LEVEL=debug` only for short-lived troubleshooting, then revert to `info` or `warn`.
 
-**`NODE_ENV`**
-
-- Selects **`config/{NODE_ENV}.json`** when that file exists (standard `node-config` behavior). It does not bypass `LOG_LEVEL`; it may supply a **different default** `LOG_LEVEL` than `config/default.json` for that environment tier.
-- Do not add `process.env.NODE_ENV` checks in routing or middleware to gate logging; rely on **`LOG_LEVEL`** and structured messages instead.
+Do not gate logging on process environment names in routing or middleware; rely on **`LOG_LEVEL`** and structured messages instead.
 
 **Log shipping (`LOKI_URL`, `LOKI_TLS_SKIP_VERIFY`, `LOKI_BASIC_AUTH`)**
 
-- Optional Loki transport in `src/app.js` should use the **same resolved `LOG_LEVEL`** as stdout. These keys follow the configuration standard above; secrets in `LOKI_BASIC_AUTH` must never be logged.
+- Optional Loki transport in `src/app.js` should use the **same resolved `LOG_LEVEL`** as stdout. Secrets in `LOKI_BASIC_AUTH` must never be logged.
 
 **Observability of the chosen settings**
 
