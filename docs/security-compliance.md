@@ -7,7 +7,7 @@
 
 | | |
 |---|---|
-| **Scope** | `api-idc` scaffold vs the operational docs in [`docs/`](.) |
+| **Scope** | `api-scaffold-federated-rodit-auth` scaffold vs the operational docs in [`docs/`](.) |
 | **API role** | Auth reference + **CRUDA** comment showcase (peer APIs) |
 
 ## Remaining gaps

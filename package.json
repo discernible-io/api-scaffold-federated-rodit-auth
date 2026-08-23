@@ -16,9 +16,13 @@
     "winston-loki": "6.1.4",
     "zod": "^3.25.76"
   },
-  "name": "api-idc",
+  "name": "api-scaffold-federated-rodit-auth",
   "version": "2025.10.01",
   "description": "RODiT / IdentyClaw passport auth peer with CRUDA showcase — scaffold for your own APIs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/discernible-io/api-scaffold-federated-rodit-auth.git"
+  },
   "main": "src/app.js",
   "scripts": {
     "preinstall": "node scripts/enforce-minimum-package-age.js",

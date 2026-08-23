@@ -1,4 +1,4 @@
-title = "api-idc gitleaks config"
+title = "api-scaffold-federated-rodit-auth gitleaks config"
 
 [allowlist]
 description = "Documented non-secret placeholders in committed config"
