@@ -1,6 +1,10 @@
-# IdentyClaw federated peer API (scaffold)
+# Federated RODiT peer scaffold (not IdentyClaw home)
 
-Reusable pattern for **federated API authentication**: IdentyClaw **Passport** holders prove key possession against **your** peer, receive a **peer-minted JWT**, and call your protected routes.
+[![Get a Passport](https://img.shields.io/badge/Get%20a%20Passport-purchase.identyclaw.com-FF4500)](https://purchase.identyclaw.com)
+
+Reusable pattern so **your API accepts IdentyClaw Passports people already mint**. This is **not** a second product to sell — clients buy a Passport once at [purchase.identyclaw.com](https://purchase.identyclaw.com), then prove possession against **your** peer, receive a **peer-minted JWT**, and call your protected routes.
+
+Enrollment for test clients: [api.identyclaw.com/.well-known/enrollment](https://api.identyclaw.com/.well-known/enrollment).
 
 This repo is a working peer built on [`@rodit/rodit-auth-be`](https://www.npmjs.com/package/@rodit/rodit-auth-be). The included **CRUDA** comments API is only a sample resource — keep the auth spine, replace CRUDA with your domain.
 
