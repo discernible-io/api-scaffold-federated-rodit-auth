@@ -1,7 +1,7 @@
 FROM docker.io/nginx:mainline-alpine
 
 RUN apk update && apk upgrade --no-cache && \
-    apk add --no-cache openssl && \
+    apk add --no-cache openssl 'libcrypto3>=3.5.8-r0' 'libssl3>=3.5.8-r0' && \
     rm /etc/nginx/conf.d/default.conf && \
     mkdir -p /app/certs
 
