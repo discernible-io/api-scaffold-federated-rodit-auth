@@ -142,3 +142,9 @@ api-docs/swagger.json      # federated peer OpenAPI contract
 - Winston + optional Loki
 - Swagger UI at `/api-docs`
 - Optional Podman + nginx (`api.Dockerfile`, `nginx.Dockerfile`)
+
+<!-- discernible-io:product-links -->
+---
+
+[discernible.io](https://www.discernible.io/) · [Get a Passport](https://purchase.identyclaw.com) · [Verify HOLA](https://verify.identyclaw.com)
+<!-- /discernible-io:product-links -->
