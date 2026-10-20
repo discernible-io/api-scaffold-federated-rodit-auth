@@ -131,7 +131,7 @@ api-docs/swagger.json      # federated peer OpenAPI contract
 | [`docs/cicd-deployment-standard.md`](docs/cicd-deployment-standard.md) | Local Podman deploy, host secrets/TLS |
 | [`docs/rpc-configuration.md`](docs/rpc-configuration.md) | `NEAR_NETWORK_CONFIG` options for `roditwallet.sh` |
 | [`docs/planned-improvements.md`](docs/planned-improvements.md) | Improvement backlog |
-| [`docs/security-compliance.md`](docs/security-compliance.md) | Compliance notes |
+| [`TODO.md`](TODO.md) | Living backlog (open gaps and compliance notes) |
 | [`scripts/README-database-init.md`](scripts/README-database-init.md) | SQLite init |
 
 ## Stack

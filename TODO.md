@@ -1,21 +1,21 @@
 # Security & standards compliance
 
-> **Before editing:** Review [`documentation-standard.md`](documentation-standard.md).
+> **Before editing:** Review [`documentation-standard.md`](docs/documentation-standard.md).
 
 **Created:** 2026-05-29  
 **Last updated:** 2026-08-17 (single config, local Podman deploy)
 
 | | |
 |---|---|
-| **Scope** | `api-scaffold-federated-rodit-auth` scaffold vs the operational docs in [`docs/`](.) |
+| **Scope** | `api-scaffold-federated-rodit-auth` scaffold vs the operational docs in [`docs/`](docs/) |
 | **API role** | Auth reference + **CRUDA** comment showcase (peer APIs) |
 
 ## Remaining gaps
 
 | Priority | Standard | Gap | Suggested fix |
 |----------|----------|-----|---------------|
-| P2 | [`configuration-standard.md`](configuration-standard.md) | SDK has no `config.set`; selected RPC URL is applied via `process.env.NEAR_RPC_URL` | SDK setter |
-| P3 | [`documentation-standard.md`](documentation-standard.md) | Keep swagger aligned with CRUDA + auth | Update `api-docs/swagger.json` when adding resources |
+| P2 | [`configuration-standard.md`](docs/configuration-standard.md) | SDK has no `config.set`; selected RPC URL is applied via `process.env.NEAR_RPC_URL` | SDK setter |
+| P3 | [`documentation-standard.md`](docs/documentation-standard.md) | Keep swagger aligned with CRUDA + auth | Update `api-docs/swagger.json` when adding resources |
 
 **Operator (host, not git):** `~/api-idc-app/secrets/secrets.env`, TLS PEMs under `certs/`, linger (`loginctl enable-linger`).
 
