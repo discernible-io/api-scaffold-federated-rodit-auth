@@ -20,20 +20,17 @@ const {
   logger,
   validateConfig,
   errorResponse,
-  config,
-  resolveHealthyNearRpcUrl
+  config
 } = require("@rodit/rodit-auth-be");
 const { sendError } = errorResponse;
 const { setExpressSessionStore } = require(path.join(
   path.dirname(require.resolve("@rodit/rodit-auth-be")),
   "lib/auth/sessionmanager.js"
 ));
-const { probeNearRpcStatus } = require("./services/near-rpc-probe.service");
 const { createHealthHandler } = require("./services/health.service");
 const {
   logResolvedConfigSnapshot,
-  logNginxPublicRateLimitSettings,
-  redactRpcHostLabel
+  logNginxPublicRateLimitSettings
 } = require("./services/startup-config.service");
 
 const WINSTON_MESSAGE = Symbol.for("message");
@@ -76,13 +73,6 @@ function createLokiLineFormat() {
 const SERVICE_NAME = config.get("SERVICE_NAME");
 const HEALTH_CHECKS_CACHE_MS = Number(config.get("HEALTH_CHECKS_CACHE_MS"));
 const includeDebugDetails = () => config.get("LOG_LEVEL") === "debug";
-
-function applySelectedNearRpcUrl(selectedRpcUrl) {
-  // SDK config.getResolved reads process.env first (configuration-standard priority 1).
-  // @rodit/rodit-auth-be has no config.set; this write is the supported override path.
-  process.env.NEAR_RPC_URL = selectedRpcUrl;
-  return "environment";
-}
 
 function peerSwaggerServerUrl() {
   const publicPort = config.has("PUBLIC_PORT") ? config.get("PUBLIC_PORT") : "8443";
@@ -748,47 +738,8 @@ async function startServer() {
       status: "creating_client"
     });
 
-    const primaryRpcUrl = config.has("NEAR_RPC_URL") ? config.get("NEAR_RPC_URL") : null;
-    let selectedRpcUrl = primaryRpcUrl;
-    if (typeof resolveHealthyNearRpcUrl === "function") {
-      selectedRpcUrl = await resolveHealthyNearRpcUrl();
-    } else if (primaryRpcUrl) {
-      logger.warnWithContext("RPC URL resolver unavailable; using configured NEAR_RPC_URL", {
-        component: "AppLifecycle",
-        operation: "startup.resolveNearRpcUrl",
-        fallback: "NEAR_RPC_URL"
-      });
-    }
-
-    if (selectedRpcUrl && selectedRpcUrl !== primaryRpcUrl) {
-      const appliedVia = applySelectedNearRpcUrl(selectedRpcUrl);
-      const probeTimeoutMs = Number(config.get("NEAR_RPC_TIMEOUT"));
-      let primaryProbeOk = null;
-      if (primaryRpcUrl) {
-        const primaryProbe = await probeNearRpcStatus(primaryRpcUrl, probeTimeoutMs);
-        primaryProbeOk = primaryProbe.ok;
-      }
-      const logContext = {
-        component: "AppLifecycle",
-        operation: "startup.resolveNearRpcUrl",
-        primaryConfigured: Boolean(primaryRpcUrl),
-        selectedSource: "resolveHealthyNearRpcUrl",
-        primaryRpcHost: redactRpcHostLabel(primaryRpcUrl),
-        selectedRpcHost: redactRpcHostLabel(selectedRpcUrl),
-        appliedVia,
-        ...(primaryProbeOk === false && { primaryProbeFailed: true })
-      };
-      if (primaryProbeOk === false) {
-        logger.warnWithContext(
-          "NEAR RPC startup fallback: primary endpoint unavailable; using alternate",
-          logContext
-        );
-      } else {
-        logger.infoWithContext("NEAR RPC startup: selected endpoint differs from config", logContext);
-      }
-    }
-    
-    // Create and initialize the client in one step
+    // Create and initialize the client in one step.
+    // NEAR_RPC_URL comes from SDK config resolution (env / secrets.env / defaults).
     roditClient = await RoditClient.create('server');
     
     // Update app.locals with the fully initialized client

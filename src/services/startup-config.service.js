@@ -185,17 +185,7 @@ function logNginxPublicRateLimitSettings(logger) {
   }
 }
 
-function redactRpcHostLabel(rpcUrl) {
-  if (!rpcUrl || typeof rpcUrl !== "string") return null;
-  try {
-    return new URL(rpcUrl).hostname;
-  } catch {
-    return "unparseable";
-  }
-}
-
 module.exports = {
   logResolvedConfigSnapshot,
-  logNginxPublicRateLimitSettings,
-  redactRpcHostLabel
+  logNginxPublicRateLimitSettings
 };

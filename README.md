@@ -131,8 +131,49 @@ api-docs/swagger.json      # federated peer OpenAPI contract
 | [`docs/cicd-deployment-standard.md`](docs/cicd-deployment-standard.md) | Local Podman deploy, host secrets/TLS |
 | [`docs/rpc-configuration.md`](docs/rpc-configuration.md) | `NEAR_NETWORK_CONFIG` options for `roditwallet.sh` |
 | [`docs/planned-improvements.md`](docs/planned-improvements.md) | Improvement backlog |
-| [`TODO.md`](TODO.md) | Living backlog (open gaps and compliance notes) |
 | [`scripts/README-database-init.md`](scripts/README-database-init.md) | SQLite init |
+
+## Standards compliance
+
+Scaffold vs operational docs in [`docs/`](docs/). Auth reference + CRUDA showcase for peer APIs.
+
+**Open:** keep [`api-docs/swagger.json`](api-docs/swagger.json) aligned when adding CRUDA/auth resources (`npm run update:permissions` after swagger auth changes).
+
+**Operator (host, not git):** `~/api-idc-app/secrets/secrets.env`, TLS PEMs under `certs/`, linger (`loginctl enable-linger`).
+
+**Deferred:** geolocation middleware (`checkGeolocation`).
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| Auth (SDK 9.x, timestamp challenge, Bearer JWT) | Met | `src/routes/auth*.routes.js`, swagger login paths |
+| Error envelope (`sendError`) | Met | Routes + global 404 / malformed JSON |
+| Single config + permission map | Met | `config/default.json`; `npm run validate:permissions` |
+| SDK `config.get` (`NEAR_RPC_URL`) | Met | `@rodit/rodit-auth-be` from env / host `secrets.env` / defaults |
+| Slim API image | Met | Multi-stage `api.Dockerfile`, npm stripped, `apk` tini |
+| Logging (no `console.*` in `src/`) | Met | `*WithContext`; stacks when `LOG_LEVEL=debug` |
+| Startup config snapshot | Met | `src/services/startup-config.service.js` |
+| Host secrets | Met | `podman run --env-file …/secrets/secrets.env` |
+| systemd linger | Met | `scripts/ensure-podman-linger.sh` |
+| `GET /health` | Met | `src/services/health.service.js` |
+| Local deploy tests | Met | `scripts/run-deployment-api-tests.js` |
+| nginx edge | Met | Deny-by-default CORS, `limit_req`, JSON gateway errors |
+
+### Local verification
+
+```bash
+npm run validate:permissions
+gitleaks detect --config .gitleaks.toml
+node --check src/app.js
+API_BASE_URL=http://127.0.0.1:8080 node scripts/run-deployment-api-tests.js
+```
+
+After a local pod deploy:
+
+```bash
+curl -fsSk "https://127.0.0.1:8443/health" | jq .
+loginctl show-user "$(whoami)" -p Linger
+podman logs api-idc-container 2>&1 | grep -E 'configuration validated|Resolved configuration'
+```
 
 ## Stack
 
