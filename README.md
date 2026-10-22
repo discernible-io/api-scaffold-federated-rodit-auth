@@ -122,6 +122,7 @@ api-docs/swagger.json      # federated peer OpenAPI contract
 
 | Document | Summary |
 | --- | --- |
+| [`TODO.md`](TODO.md) | Open work for this scaffold (CI/CD, config layout, docs sync) |
 | [`api-docs/swagger.json`](api-docs/swagger.json) | OpenAPI 3.0 — federation model + auth contract |
 | [`docs/documentation-standard.md`](docs/documentation-standard.md) | How docs are written, indexed, and cross-referenced |
 | [`docs/configuration-standard.md`](docs/configuration-standard.md) | Config sources and secrets |
@@ -135,13 +136,7 @@ api-docs/swagger.json      # federated peer OpenAPI contract
 
 ## Standards compliance
 
-Scaffold vs operational docs in [`docs/`](docs/). Auth reference + CRUDA showcase for peer APIs.
-
-**Open:** keep [`api-docs/swagger.json`](api-docs/swagger.json) aligned when adding CRUDA/auth resources (`npm run update:permissions` after swagger auth changes).
-
-**Operator (host, not git):** `~/api-idc-app/secrets/secrets.env`, TLS PEMs under `certs/`, linger (`loginctl enable-linger`).
-
-**Deferred:** geolocation middleware (`checkGeolocation`).
+Scaffold vs operational docs in [`docs/`](docs/). Auth reference + CRUDA showcase for peer APIs. Open gaps live in [`TODO.md`](TODO.md).
 
 | Area | Status | Evidence |
 | --- | --- | --- |
