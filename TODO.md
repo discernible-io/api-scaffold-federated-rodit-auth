@@ -15,3 +15,12 @@
 ## When a fork goes live
 
 The consuming service (not this template) then owns: `.github/workflows/deploy.yml`, host `secrets/secrets.env` + TLS, linger, and tier config. Follow [`cicd-deployment-standard.md`](https://github.com/discernible-io/docs/blob/main/docs/cicd-deployment-standard.md) in that new repo.
+
+
+## Standards conformance gaps (host audit 2026-10-27)
+
+**Template only** — do not score as a live API.
+
+| Gap | Notes |
+| --- | --- |
+| Stale vendored `docs/` | Local `docs/cicd-deployment-standard.md` ~3 KB vs central ~107 KB — prefer reference-only to discernible-io/docs for forks; do not cite the local copy as authoritative |
