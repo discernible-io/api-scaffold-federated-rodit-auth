@@ -119,7 +119,7 @@ async function setupMcpHttpTransport(app, { authenticate, getResource, listResou
       name: SERVER_INFO.name,
       version: SERVER_INFO.version,
       instructions:
-        "RODiT CRUDA scaffold MCP: list_resources/get_resource are public docs. Prefer identyclaw_ensure_session + identyclaw_request for authenticated REST against /api/cruda/*."
+        "RODiT CRUDA scaffold MCP: list_resources/get_resource are public docs. Authenticated REST against /api/cruda/* uses a peer JWT from POST /api/login. Example apiEndpoint: https://peer.example.com."
     });
 
     mcpServer.tool(

@@ -62,7 +62,7 @@ near config show-connections
 To verify the network configuration is working:
 ```bash
 export NEAR_NETWORK_CONFIG="mainnet-lava"
-./roditwallet.sh 76177d5ebd89f329945ab8991357018f44ab0fe12f7a8216c6054e565e80a7aa 'bc=near.org;sc=roditcorp-com.near;id=01K8QECHMM1214VMDHSH7JM6H8'
+./roditwallet.sh <account-key> 'bc=near.org;sc=example.near;id=<rodit-id>'
 ```
 
 You should see: `Using network config: mainnet-lava` at the start of the output.

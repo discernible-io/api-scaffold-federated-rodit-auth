@@ -1,25 +1,25 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "IdentyClaw Federated Peer API (RODiT)",
+    "title": "Federated RODiT Peer API",
     "version": "2025.10.01",
-    "description": "# IdentyClaw federated peer API\n\nReusable pattern for **federated API authentication**: IdentyClaw **Passport** holders prove possession of their keys against **this peer**, receive a **peer-minted JWT**, and call protected routes. Built on `@rodit/rodit-auth-be` 9.x.\n\nCRUDA (`/api/cruda/*`) is only a sample protected resource — replace it with your domain.\n\n## Federation model\n\n| Identity surface | Role |\n| --- | --- |\n| **IdentyClaw home** (`https://api.identyclaw.com`) | Passport / HOLA enrollment. Home JWT does **not** authorize this peer's protected routes. |\n| **This peer** (your `apiEndpoint`) | Own RODiT service credentials. Mint JWTs via `POST /api/login`. Clients must login **against this base URL**. |\n\nEach federated peer is an independent auth boundary. Agents and apps remint a JWT per `apiEndpoint`. Do not reuse a token from another peer or from home.\n\n```\nPassport keys (Ed25519)\n        │\n        ▼\nGET /api/login/timestamp  →  challenge (timestamp + timestamp_iso)\n        │\n        ▼\nSign UTF-8: identifier + timestamp_iso  →  POST /api/login\n        │\n        ▼\nPeer JWT (Authorization: Bearer)  →  protected routes + METHOD_PERMISSION_MAP\n```\n\n## Authentication (raw)\n\n1. `GET /api/login/timestamp` — challenge pair from this peer.\n2. Sign UTF-8 `identifier + timestamp_iso` (Ed25519 → base64url). Identifier is Passport `roditid` (12 letters) or NEAR `accountid` (64-hex).\n3. `POST /api/login` — send signature + exactly one of `timestamp` / `timestamp_iso`.\n4. Call protected routes with `Authorization: Bearer <jwt_token>` (body field is `jwt_token`, not `token`).\n5. `POST /api/logout` — invalidate session (`authenticateForLogout` allows expired JWTs with valid signature).\n\n## OpenClaw / agents\n\nPreferred: `identyclaw_ensure_session({ apiEndpoint })` then `identyclaw_request({ method, path, apiEndpoint })`. The plugin caches the peer JWT and never returns it to the model.\n\nDiscovery: `GET /`, `GET /.well-known/mcp`, `GET /api/mcp/resource/doc:skills`.\n\n## Authorization\n\nProtected showcase routes under `/api/cruda/*` require both:\n\n1. Valid peer JWT (`authenticate`)\n2. Verb allowed by `METHOD_PERMISSION_MAP` (`authorize`) — keys such as `create`, `list`, `read`, `update`, `destroy`\n\nSessions admin follows the same RODiT permission patterns. See config `METHOD_PERMISSION_MAP`.\n\n## Errors\n\n`{ error: { code, message, details? }, requestId, timestamp }` — see `components.schemas.ErrorResponse`.\n\n## Scaffold usage\n\n1. Keep auth, discovery, health, swagger, and permission-map wiring.\n2. Replace or extend `/api/cruda` with your resources; mount with authenticate + authorize.\n3. Point `SERVICE_NAME` / nginx / OpenAPI `servers` at your peer hostname.\n4. Publish this OpenAPI as the contract for Passport holders integrating with your peer.\n",
-    "termsOfService": "https://identyclaw.com",
+    "description": "# Federated RODiT peer API\n\nReusable pattern for **federated API authentication**: RODiT **Passport** holders prove possession of their keys against **this peer**, receive a **peer-minted JWT**, and call protected routes. Built on `@rodit/rodit-auth-be` 10.0.3.\n\nCRUDA (`/api/cruda/*`) is only a sample protected resource — replace it with your domain.\n\n## Federation model\n\n| Identity surface | Role |\n| --- | --- |\n| **Passport home** (`https://api.example.com`) | Issues Passport credentials. A home JWT does **not** authorize this peer's protected routes. |\n| **This peer** (your `apiEndpoint`) | Own RODiT service credentials. Mint JWTs via `POST /api/login`. Clients must login **against this base URL**. |\n\nEach federated peer is an independent auth boundary. Agents and apps remint a JWT per `apiEndpoint`. Do not reuse a token from another peer or from home.\n\n```\nPassport keys (Ed25519)\n        │\n        ▼\nGET /api/login/timestamp  →  challenge (timestamp + timestamp_iso)\n        │\n        ▼\nSign UTF-8: identifier + timestamp_iso  →  POST /api/login\n        │\n        ▼\nPeer JWT (Authorization: Bearer)  →  protected routes + METHOD_PERMISSION_MAP\n```\n\n## Authentication (raw)\n\n1. `GET /api/login/timestamp` — challenge pair from this peer.\n2. Sign UTF-8 `identifier + timestamp_iso` (Ed25519 → base64url). Identifier is Passport `roditid` (12 letters) or NEAR `accountid` (64-hex).\n3. `POST /api/login` — send signature + exactly one of `timestamp` / `timestamp_iso`.\n4. Call protected routes with `Authorization: Bearer <jwt_token>` (body field is `jwt_token`, not `token`).\n5. `POST /api/logout` — invalidate session (`authenticateForLogout` allows expired JWTs with valid signature).\n\n## Agents\n\nSet `apiEndpoint` to this peer (`https://peer.example.com`). `GET /api/login/timestamp`, then `POST /api/login`, then `Authorization: Bearer <jwt_token>`. Keep the JWT outside model-visible output. A token from `https://api.example.com` does not authorize this peer.\n\nDiscovery: `GET /`, `GET /.well-known/mcp`, `GET /api/mcp/resource/doc:skills`.\n\n## Authorization\n\nProtected showcase routes under `/api/cruda/*` require both:\n\n1. Valid peer JWT (`authenticate`)\n2. Verb allowed by `METHOD_PERMISSION_MAP` (`authorize`) — keys such as `create`, `list`, `read`, `update`, `destroy`\n\nSessions admin follows the same RODiT permission patterns. See config `METHOD_PERMISSION_MAP`.\n\n## Errors\n\n`{ error: { code, message, details? }, requestId, timestamp }` — see `components.schemas.ErrorResponse`.\n\n## Scaffold usage\n\n1. Keep auth, discovery, health, swagger, and permission-map wiring.\n2. Replace or extend `/api/cruda` with your resources; mount with authenticate + authorize.\n3. Point `SERVICE_NAME` / nginx / OpenAPI `servers` at your peer hostname.\n4. Publish this OpenAPI as the contract for Passport holders integrating with your peer.\n",
+    "termsOfService": "https://example.com/terms",
     "contact": {
-      "name": "Discernible Inc.",
-      "url": "https://identyclaw.com",
-      "email": "support@rodit-tech.com"
+      "name": "Example Peer",
+      "url": "https://example.com",
+      "email": "support@example.com"
     },
     "license": {
       "name": "MIT",
       "url": "https://opensource.org/licenses/MIT"
     },
 
-    "x-api-id": "identyclaw-federated-peer-v1"
+    "x-api-id": "federated-peer-v1"
   },
   "servers": [
     {
-      "url": "https://your-peer.example:8443",
+      "url": "https://peer.example.com:8443",
       "description": "This peer — replace with your federated peer base URL"
     },
     {
@@ -28,8 +28,8 @@
     }
   ],
   "externalDocs": {
-    "description": "IdentyClaw home API (Passport / HOLA — separate auth boundary)",
-    "url": "https://api.identyclaw.com"
+    "description": "Passport home API (separate auth boundary — replace with your issuer)",
+    "url": "https://api.example.com"
   },
   "components": {
     "securitySchemes": {
@@ -37,7 +37,7 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "RODiT-JWT",
-        "description": "Peer-minted JWT from POST /api/login on **this** apiEndpoint (`jwt_token` in body). Not a cookie session. Not interchangeable with IdentyClaw home JWTs or other peers' tokens."
+        "description": "Peer-minted JWT from POST /api/login on **this** apiEndpoint (`jwt_token` in body). Not a cookie session. Not interchangeable with home JWTs or other peers' tokens."
       }
     },
     "schemas": {
@@ -817,7 +817,7 @@
     "/api/logout": {
       "post": {
         "summary": "Logout from this peer",
-        "description": "Invalidates the peer session for this apiEndpoint. Uses authenticateForLogout so expired JWTs may still be accepted when the signature is valid. Does not invalidate IdentyClaw home or other peers' sessions.",
+        "description": "Invalidates the peer session for this apiEndpoint. Uses authenticateForLogout so expired JWTs may still be accepted when the signature is valid. Does not invalidate home or other peers' sessions.",
         "tags": [
           "Authentication"
         ],
@@ -2386,7 +2386,7 @@
   "tags": [
     {
       "name": "Authentication",
-      "description": "Federated peer login for IdentyClaw Passport holders: challenge, mint JWT, logout"
+      "description": "Federated peer login for RODiT Passport holders: challenge, mint JWT, logout"
     },
     {
       "name": "System",
@@ -2406,7 +2406,7 @@
     },
     {
       "name": "MCP",
-      "description": "Public agent documentation (`/api/mcp/*`, `/.well-known/mcp`) and streamable HTTP `/mcp`. Not IdentyClaw home MCP."
+      "description": "Public agent documentation (`/api/mcp/*`, `/.well-known/mcp`) and streamable HTTP `/mcp` for this peer."
     },
     {
       "name": "Debug",

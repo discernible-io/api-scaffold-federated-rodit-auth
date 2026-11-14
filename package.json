@@ -1,10 +1,10 @@
 {
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.29.0",
-    "@rodit/rodit-auth-be": "9.16.2",
-    "config": "^4.4.1",
-    "connect-sqlite3": "0.9.16",
-    "express": "4.21.2",
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "@rodit/rodit-auth-be": "10.0.3",
+    "config": "^4.4.2",
+    "connect-sqlite3": "0.9.18",
+    "express": "4.22.3",
     "express-session": "^1.19.0",
     "nodemon": "^3.1.14",
     "sqlite": "^5.1.1",
@@ -12,13 +12,12 @@
     "swagger-ui-express": "^5.0.1",
     "ulid": "^3.0.2",
     "winston": "^3.19.0",
-    "winston-daily-rotate-file": "^5.0.0",
-    "winston-loki": "6.1.4",
-    "zod": "^3.25.76"
+    "winston-loki": "6.1.7",
+    "zod": "^4.6.6"
   },
   "name": "api-scaffold-federated-rodit-auth",
   "version": "2025.10.01",
-  "description": "RODiT / IdentyClaw passport auth peer with CRUDA showcase \u2014 scaffold for your own APIs",
+  "description": "RODiT passport auth peer with a CRUDA showcase — scaffold for your own APIs",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/discernible-io/api-scaffold-federated-rodit-auth.git"
@@ -31,10 +30,25 @@
     "validate:permissions": "node scripts/update-permissionsmap.js --validate"
   },
   "overrides": {
-    "undici": "^6.24.1",
-    "hono": ">=4.12.34",
+    "undici": "^6.29.1",
+    "protobufjs": ">=7.6.5",
+    "hono": ">=4.13.16",
+    "@hono/node-server": "2.1.7",
     "tar": ">=7.5.19",
-    "path-to-regexp@0.1.12": "0.1.13"
+    "path-to-regexp@0.1.12": "0.1.13",
+    "proxy-addr": ">=2.0.8",
+    "follow-redirects": ">=1.16.1",
+    "body-parser@1": "1.20.9",
+    "body-parser@2": "2.4.0",
+    "ip-address": ">=10.7.4",
+    "fast-uri": ">=3.1.9",
+    "brace-expansion": ">=1.1.21",
+    "minimatch@3": "3.1.4",
+    "picomatch": ">=2.3.2",
+    "http-cache-semantics": ">=4.2.1",
+    "express-rate-limit": ">=8.2.2",
+    "qs": ">=6.16.1",
+    "zod": "$zod"
   },
   "author": "Discernible Ltd",
   "license": "MIT"

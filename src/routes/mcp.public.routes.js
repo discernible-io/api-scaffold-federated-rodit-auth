@@ -1,5 +1,5 @@
 /**
- * Public MCP HTTP routes for agent documentation and OpenClaw plugin compatibility.
+ * Public MCP HTTP routes for agent documentation.
  * Resource list and get-by-uri are unauthenticated so agents can read login guides before JWT.
  */
 const express = require("express");
@@ -35,32 +35,17 @@ function loadSwaggerSpec() {
 
 const AGENT_SKILLS_MD = `# Agent login cheat sheet (RODiT CRUDA scaffold)
 
-## Identity (pick one)
+## Identity
 
-### 1. OpenClaw + IdentyClaw plugin (preferred for OpenClaw agents)
+Login against **this** peer. Example \`apiEndpoint\`: \`https://peer.example.com\`.
 
-If you already have Passport keys and the IdentyClaw OpenClaw plugin:
+Do **not** invent curl Bearer headers from chat. A JWT from \`https://api.example.com\` does **not** authorize this peer's protected routes.
 
-\`\`\`text
-identyclaw_ensure_session({ apiEndpoint: "<this-api-base>" })
-# JWT is cached inside the plugin — it is NEVER returned to the model.
-identyclaw_request({ method: "GET", path: "/api/cruda/", apiEndpoint: "<this-api-base>" })
-\`\`\`
-
-Install if needed:
-
-\`\`\`bash
-openclaw plugins install clawhub:@identyclaw/openclaw-identyclaw-plugin
-openclaw skills install clawhub:identyclaw
-\`\`\`
-
-Do **not** invent curl Bearer headers from chat. A JWT from \`https://api.identyclaw.com\` does **not** authorize this peer's protected routes — login against **this** \`apiEndpoint\`.
-
-### 2. MCP streamable HTTP (docs tools)
+### MCP streamable HTTP (docs tools)
 
 Connect to \`/mcp\` with an MCP client: \`initialize\` first, keep \`Mcp-Session-Id\`. Do **not** bare-GET \`/mcp\` (use \`/.well-known/mcp\` for discovery). Tools: \`list_resources\`, \`get_resource\`.
 
-### 3. Raw JWT login (any runtime)
+### JWT login
 
 | Step | Endpoint | Notes |
 | --- | --- | --- |
@@ -95,15 +80,15 @@ Protected CRUDA comments API: \`/api/cruda/*\` (create / list / read / update / 
 const AGENT_LOGIN_GUIDE = {
   title: "Agent API login",
   description:
-    "JWT challenge-response login for this RODiT peer. OpenClaw: ensure_session then identyclaw_request (JWT never returned to the model). Others: raw Ed25519 login.",
+    "JWT challenge-response login for this RODiT peer. Example apiEndpoint: https://peer.example.com. Keep the JWT outside model-visible output.",
   preferredPath: {
-    runtime: "OpenClaw + IdentyClaw plugin",
-    call: "identyclaw_ensure_session({ apiEndpoint }) then identyclaw_request({ method, path, apiEndpoint })",
-    note: "Plugin caches JWT and never returns it; do not curl Bearer from chat. Home (api.identyclaw.com) JWT is rejected for this peer's protected routes."
+    runtime: "Any client that can sign the challenge",
+    call: "GET /api/login/timestamp then POST /api/login against this peer, then Authorization: Bearer jwt_token",
+    note: "Keep jwt_token outside model-visible output. A JWT from https://api.example.com is rejected for this peer's protected routes."
   },
   flow: [
-    "OpenClaw (preferred): identyclaw_ensure_session({ apiEndpoint }) then identyclaw_request",
-    "Raw login: GET /api/login/timestamp",
+    "Set apiEndpoint to this peer (https://peer.example.com)",
+    "GET /api/login/timestamp",
     "Sign UTF-8 (accountid or roditid) + timestamp_iso with Ed25519 → base64url",
     "POST /api/login with exactly one timestamp field and base64url_signature",
     "Use Authorization: Bearer jwt_token on protected REST routes (e.g. /api/cruda/*)"
@@ -117,17 +102,13 @@ const AGENT_LOGIN_GUIDE = {
   responseFields: {
     jwt_token: "Bearer token (~1500–2000 chars, three dot-separated segments)"
   },
-  openClaw: {
-    ensureSession: "identyclaw_ensure_session({ apiEndpoint })",
-    plugin: "openclaw plugins install clawhub:@identyclaw/openclaw-identyclaw-plugin",
-    skill: "openclaw skills install clawhub:identyclaw"
-  },
+  exampleApiEndpoint: "https://peer.example.com",
   showcase: "/api/cruda"
 };
 
 const TROUBLESHOOTING_GUIDE = {
   title: "Agent login troubleshooting",
-  description: "Common login failures for OpenClaw, Cursor, and shell agents",
+  description: "Common login failures for agents and shell clients",
   lastUpdated: "2026-07-30",
   commonErrors: [
     {
@@ -135,12 +116,12 @@ const TROUBLESHOOTING_GUIDE = {
       cause:
         "Client sent a truncated or redacted JWT (e.g. eyJhbG…ISDw from agent tool output). Login succeeded; the follow-up bearer token was invalid.",
       solutions: [
-        "Store jwt_token outside model context: OpenClaw identyclaw plugin, RoditClient, or a local file",
+        "Store jwt_token outside model context: the client cache, RoditClient, or a local file",
         "Verify full JWT length ~1500–2000 and three dot-separated segments",
         "Never inline jwt_token in commands visible to the model"
       ],
       prevention:
-        "Prefer the OpenClaw identyclaw plugin or local SDK over raw curl the model can see."
+        "Prefer a client that caches the JWT, or the local SDK, over raw curl the model can see."
     },
     {
       error: "LOGIN_BASE64URL_SIGNATURE_INVALID or 401 after POST /api/login",
@@ -169,7 +150,7 @@ const TROUBLESHOOTING_GUIDE = {
 
 const DISCOVERY_INDEX = {
   title: "MCP discovery index",
-  description: "Start here for agent login and OpenClaw compatibility",
+  description: "Start here for agent login on this peer",
   resources: [
     { uri: "doc:skills", http: "/api/mcp/resource/doc:skills", description: "Login cheat sheet" },
     { uri: "guide:agent-login", http: "/api/mcp/resource/guide:agent-login", description: "Structured login guide" },

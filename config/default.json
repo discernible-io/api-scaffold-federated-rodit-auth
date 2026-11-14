@@ -5,7 +5,7 @@
     "DB_PATH": "/app/data/database.sqlite"
   },
   "API_VERSION": "2025.10.01",
-  "NEAR_CONTRACT_ID": "genaaaa-identyclaw-com.near",
+  "NEAR_CONTRACT_ID": "example.near",
   "RODIT_NEAR_CREDENTIALS_SOURCE": "env",
   "SECURITY_OPTIONS": {
     "SESSION_SECRET": "HMAC-session-secret-is-not-set",
@@ -13,7 +13,7 @@
     "WEBHOOK_TLS_SKIP_VERIFY": "false"
   },
   "SERVERPORT": 8080,
-  "SERVICE_NAME": "your-peer.example",
+  "SERVICE_NAME": "peer.example.com",
   "PUBLIC_PORT": "8443",
   "FRONTEND_ORIGIN": "",
   "WEBHOOK_TEST_ENABLED": "false",

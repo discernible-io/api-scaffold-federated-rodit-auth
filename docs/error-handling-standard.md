@@ -26,8 +26,8 @@ INPUTS:
 STEPS:
   - {
   - FIELD: "error": {
-  - FIELD: "code": "HOLA_VALIDATION_FAILED",
-  - FIELD: "message": "Token ID must be exactly 12 lowercase letters",
+  - FIELD: "code": "INVALID_LOGIN_TIMESTAMP",
+  - FIELD: "message": "Send exactly one of timestamp or timestamp_iso",
   - FIELD: "details": { "tokenId": "INVALID123" }
   - DO: },
   - FIELD: "requestId": "01HX9X0T9CS1EM0WQ7R6F5B2VY",
@@ -60,8 +60,8 @@ STEPS:
   - DO: sendError(res, {
   - FIELD: statusCode: 400,
   - DO: requestId,
-  - FIELD: code: 'HOLA_VALIDATION_FAILED',
-  - FIELD: message: 'Token ID must be exactly 12 lowercase letters'
+  - FIELD: code: 'INVALID_LOGIN_TIMESTAMP',
+  - FIELD: message: 'Send exactly one of timestamp or timestamp_iso'
   - DO: })
   - NOTE: With details (when helpful)
   - DO: sendError(res, {
@@ -121,13 +121,11 @@ OUTPUTS:
 | `TOKEN_NOT_FOUND` | 401 | Token doesn't exist on blockchain |
 | `IDENTITY_NOT_FOUND` | 404 | RODiT identity not found |
 
-### HOLA Handshake
+### Login challenge body (`POST /api/login`, HTTP 400)
 | Code | Status | Meaning |
 |------|--------|---------|
-| `HOLA_VALIDATION_FAILED` | 400 | Missing hola, envelope/shape issues, format, fields, checksum, token id, nonce hex, length limits; see `error.details.reasonCode` |
-| `HOLA_TIMESTAMP_INVALID` | 400 | HOLA line timestamp: invalid ISO-8601, or outside acceptable freshness window (`/api/testhola`); use ISO from `GET /api/holanonce16ts` for that line — not the login challenge `timestamp_iso` |
-| `HOLA_SIGNATURE_INVALID` | 400 | HOLA line Ed25519 / base32 verification failed (`/api/testhola` HTTP errors) |
-| `HOLA_RESPONSE_FAILED` | 400 | Server could not emit outbound test HOLA (`/api/testhola`) |
+| `INVALID_LOGIN_TIMESTAMP` | 400 | Missing, non-canonical, or non-integer challenge timestamp |
+| `LOGIN_TIMESTAMP_AMBIGUOUS` | 400 | Both `timestamp` and `timestamp_iso` were sent |
 
 ### Login (JWT) verification (`POST /api/login`, HTTP 401 when failures are not silent)
 | Code | Status | Meaning |
@@ -205,8 +203,8 @@ INPUTS:
 STEPS:
   - {
   - FIELD: "error": {
-  - FIELD: "code": "HOLA_VALIDATION_FAILED",
-  - FIELD: "message": "Token ID must be exactly 12 lowercase letters"
+  - FIELD: "code": "INVALID_LOGIN_TIMESTAMP",
+  - FIELD: "message": "Send exactly one of timestamp or timestamp_iso"
   - DO: },
   - FIELD: "requestId": "01HX9X0T9CS1EM0WQ7R6F5B2VY",
   - FIELD: "timestamp": "2026-04-15T08:21:45.000Z"

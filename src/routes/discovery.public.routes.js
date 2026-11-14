@@ -6,7 +6,7 @@ const { version: APP_VERSION } = require("../lib/app-version");
 
 /**
  * @route GET /
- * @desc API discovery with agent login guidance (OpenClaw / shell agents)
+ * @desc API discovery with agent login guidance
  */
 router.get("/", (req, res) => {
   const requestId = req.requestId || ulid();
@@ -22,14 +22,14 @@ router.get("/", (req, res) => {
     name: "RODiT Authentication API",
     version: APP_VERSION,
     description:
-      "Scaffold API for RODiT / IdentyClaw passport login with a CRUDA comments showcase. Agents: start with doc:skills or guide:troubleshooting via MCP HTTP paths (see agentGuide).",
+      "Scaffold API for RODiT passport login with a CRUDA comments showcase. Example peer: https://peer.example.com. Agents: start with doc:skills or guide:troubleshooting via MCP HTTP paths (see agentGuide).",
     agentGuide: {
       summary:
-        "OpenClaw: identyclaw_ensure_session({ apiEndpoint }) then call protected routes via identyclaw_request. JWT is never returned to the model. Raw: GET /api/login/timestamp → POST /api/login → Authorization: Bearer on /api/cruda/*.",
+        "Login against this peer: GET /api/login/timestamp → POST /api/login → Authorization: Bearer on /api/cruda/*. Keep the JWT outside model-visible output. A token from https://api.example.com does not authorize this peer.",
       tlsNote: "If using self-signed TLS on :8443 — use curl -sk",
       loginFlow: {
-        openClawPreferred:
-          'identyclaw_ensure_session({ apiEndpoint }) then identyclaw_request({ method, path, apiEndpoint })',
+        challengeResponse:
+          "GET /api/login/timestamp then POST /api/login against this peer (https://peer.example.com)",
         timestamp: "GET /api/login/timestamp",
         login: "POST /api/login",
         verify: "GET /api/token/claims (or any protected route)",
@@ -47,10 +47,7 @@ router.get("/", (req, res) => {
         resourceUri: "guide:troubleshooting",
         http: "/api/mcp/resource/guide:troubleshooting"
       },
-      clawHub: {
-        skill: "openclaw skills install clawhub:identyclaw",
-        plugin: "openclaw plugins install clawhub:@identyclaw/openclaw-identyclaw-plugin"
-      },
+      exampleApiEndpoint: "https://peer.example.com",
       mcpDiscovery: "/.well-known/mcp",
       listResources: "/api/mcp/resources"
     },
@@ -102,7 +99,7 @@ router.get("/", (req, res) => {
         mcp: "/mcp"
       },
       note:
-        "Doc resources are public. OpenClaw agents should prefer identyclaw_ensure_session + identyclaw_request so JWT never enters the model context. Do not bare-GET /mcp — use an MCP client (initialize → Mcp-Session-Id) or /.well-known/mcp / /api/mcp/resources."
+        "Doc resources are public. Keep the peer JWT outside model-visible output. Do not bare-GET /mcp — use an MCP client (initialize → Mcp-Session-Id) or /.well-known/mcp / /api/mcp/resources."
     },
     doNotUseRawHttpGetOn: "/mcp",
     requestId,
@@ -152,18 +149,15 @@ router.get("/.well-known/mcp", (req, res) => {
     ],
     agentGuide: {
       summary:
-        "OpenClaw + IdentyClaw: ensure_session, then call /api/cruda/* via identyclaw_request (JWT never to model). Raw login: doc:skills.",
+        "Login against this peer (https://peer.example.com), then call /api/cruda/* with the peer JWT. Keep the JWT outside model-visible output. Steps: doc:skills.",
       tlsNote: "Self-signed TLS — use curl -sk",
       login: {
-        openClawPreferred:
-          "identyclaw_ensure_session({ apiEndpoint }) then identyclaw_request({ method, path, apiEndpoint })",
+        challengeResponse:
+          "GET /api/login/timestamp then POST /api/login against this peer (https://peer.example.com)",
         timestamp: "/api/login/timestamp",
         exchange: "/api/login"
       },
-      clawHub: {
-        skill: "openclaw skills install clawhub:identyclaw",
-        plugin: "openclaw plugins install clawhub:@identyclaw/openclaw-identyclaw-plugin"
-      }
+      exampleApiEndpoint: "https://peer.example.com"
     },
     doNotUseRawHttpGetOn: "/mcp",
     httpAccessForAgents: {

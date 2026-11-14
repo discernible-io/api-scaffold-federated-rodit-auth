@@ -785,7 +785,7 @@ async function startServer() {
 
     app.get("/health", createHealthHandler({ app, config, logger, cacheMs: HEALTH_CHECKS_CACHE_MS }));
 
-    // Auth routes (aligned with idclawserver-idc / OpenClaw plugin)
+    // Auth routes (timestamp challenge, then peer JWT)
     app.use("/api", authPublicRoutes);
     app.use("/api", agentPublicRoutes);
 

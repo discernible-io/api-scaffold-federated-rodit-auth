@@ -1,10 +1,6 @@
-# Federated RODiT peer scaffold (not IdentyClaw home)
+# Federated RODiT peer scaffold
 
-[![Get a Passport](https://img.shields.io/badge/Get%20a%20Passport-purchase.identyclaw.com-FF4500)](https://purchase.identyclaw.com)
-
-Reusable pattern so **your API accepts IdentyClaw Passports people already mint**. This is **not** a second product to sell — clients buy a Passport once at [purchase.identyclaw.com](https://purchase.identyclaw.com), then prove possession against **your** peer, receive a **peer-minted JWT**, and call your protected routes.
-
-Enrollment for test clients: [api.identyclaw.com/.well-known/enrollment](https://api.identyclaw.com/.well-known/enrollment).
+Reusable pattern so **your API accepts RODiT Passports people already hold**. They prove possession against **your** peer, receive a **peer-minted JWT**, and call your protected routes. Replace the sample hostnames (`api.example.com`, `peer.example.com`) with your own.
 
 This repo is a working peer built on [`@rodit/rodit-auth-be`](https://www.npmjs.com/package/@rodit/rodit-auth-be). The included **CRUDA** comments API is only a sample resource — keep the auth spine, replace CRUDA with your domain.
 
@@ -12,7 +8,7 @@ This repo is a working peer built on [`@rodit/rodit-auth-be`](https://www.npmjs.
 
 ## Why federation
 
-IdentyClaw home (`https://api.identyclaw.com`) issues Passport / HOLA identity. It does **not** authorize arbitrary third-party APIs.
+The Passport home (`https://api.example.com`) issues Passport identity. It does **not** authorize arbitrary third-party APIs.
 
 Each service that wants Passport holders as clients runs as a **peer**:
 
@@ -25,9 +21,9 @@ Clients remint a JWT **per peer**. Tokens are not portable across home and peers
 
 ```text
 ┌─────────────────────┐         ┌──────────────────────────┐
-│ IdentyClaw home     │         │ Your federated peer      │
-│ api.identyclaw.com  │         │ (this scaffold)          │
-│ Passport / HOLA     │         │ POST /api/login → JWT    │
+│ Passport home       │         │ Your federated peer      │
+│ api.example.com     │         │ peer.example.com         │
+│ Passport identity   │         │ POST /api/login → JWT    │
 └─────────┬───────────┘         └────────────┬─────────────┘
           │ Passport keys                    │
           └──────────────┬───────────────────┘
@@ -48,19 +44,9 @@ Clients remint a JWT **per peer**. Tokens are not portable across home and peers
 
 OpenAPI is authoritative: [`api-docs/swagger.json`](api-docs/swagger.json) (also `/api-docs`).
 
-### OpenClaw agents
+### Agents
 
-```text
-identyclaw_ensure_session({ apiEndpoint: "https://your-peer.example:8443" })
-identyclaw_request({ method: "GET", path: "/api/cruda/", apiEndpoint: "https://your-peer.example:8443" })
-```
-
-The plugin caches the peer JWT and never returns it to the model. Install:
-
-```bash
-openclaw plugins install clawhub:@identyclaw/openclaw-identyclaw-plugin
-openclaw skills install clawhub:identyclaw
-```
+Set `apiEndpoint` to this peer (`https://peer.example.com:8443`). Login with `GET /api/login/timestamp` then `POST /api/login`, and send `Authorization: Bearer <jwt_token>` on `/api/cruda/*`. Keep the JWT outside model-visible output. A token minted by `https://api.example.com` does not authorize this peer.
 
 Public agent guides (no JWT): `GET /api/mcp/resource/doc:skills`, `GET /.well-known/mcp`, `GET /`.
 
@@ -138,22 +124,22 @@ api-docs/swagger.json      # federated peer OpenAPI contract
 
 ## Standards compliance
 
-Scaffold vs operational docs in [`docs/`](docs/). Auth reference + CRUDA showcase for peer APIs. Open gaps live in [`TODO.md`](TODO.md).
+Authoritative rules are [discernible-io/docs](https://github.com/discernible-io/docs) `main` at `1c6ed12322f651728bc32235f003882f3770d9b8`. This repo is a peer template, so it is not scored as a live API. Files under [`docs/`](docs/) are a non-authoritative copy. Open gaps live in [`TODO.md`](TODO.md).
 
 | Area | Status | Evidence |
 | --- | --- | --- |
-| Auth (SDK 9.x, timestamp challenge, Bearer JWT) | Met | `src/routes/auth*.routes.js`, swagger login paths |
+| Auth (SDK 10.0.3, timestamp challenge, Bearer JWT) | Met | `src/routes/auth*.routes.js`, swagger login paths |
 | Error envelope (`sendError`) | Met | Routes + global 404 / malformed JSON |
 | Single config + permission map | Met | `config/default.json`; `npm run validate:permissions` |
 | SDK `config.get` (`NEAR_RPC_URL`) | Met | `@rodit/rodit-auth-be` from env / host `secrets.env` / defaults |
-| Slim API image | Met | Multi-stage `api.Dockerfile`, npm stripped, `apk` tini |
+| Slim API image | Met | `api.Dockerfile` `node:22.23.4-alpine` digest pin, npm stripped, OpenSSL apk floor |
 | Logging (no `console.*` in `src/`) | Met | `*WithContext`; stacks when `LOG_LEVEL=debug` |
 | Startup config snapshot | Met | `src/services/startup-config.service.js` |
 | Host secrets | Met | `podman run --env-file …/secrets/secrets.env` |
 | systemd linger | Met | `scripts/ensure-podman-linger.sh` |
 | `GET /health` | Met | `src/services/health.service.js` |
 | Local deploy tests | Met | `scripts/run-deployment-api-tests.js` |
-| nginx edge | Met | Deny-by-default CORS, `limit_req`, JSON gateway errors |
+| nginx edge | Met | Digest-pinned nginx, `brotli-libs` 1.2.1 floor, deny-by-default CORS, `limit_req` |
 
 ### Local verification
 
@@ -174,15 +160,9 @@ podman logs api-idc-container 2>&1 | grep -E 'configuration validated|Resolved c
 
 ## Stack
 
-- Node.js 20, Express 4
-- `@rodit/rodit-auth-be` 9.x (RODiT authenticate / authorize / login)
+- Node.js 22.23.4, Express 4
+- `@rodit/rodit-auth-be` 10.0.3 (RODiT authenticate / authorize / login; that package is AGPL-3.0-only)
 - SQLite (sessions + sample CRUDA data)
 - Winston + optional Loki
 - Swagger UI at `/api-docs`
 - Optional Podman + nginx (`api.Dockerfile`, `nginx.Dockerfile`)
-
-<!-- discernible-io:product-links -->
----
-
-[discernible.io](https://www.discernible.io/) · [Get a Passport](https://purchase.identyclaw.com) · [Verify HOLA](https://verify.identyclaw.com)
-<!-- /discernible-io:product-links -->
