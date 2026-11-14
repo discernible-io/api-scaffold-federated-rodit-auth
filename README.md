@@ -8,6 +8,8 @@ Enrollment for test clients: [api.identyclaw.com/.well-known/enrollment](https:/
 
 This repo is a working peer built on [`@rodit/rodit-auth-be`](https://www.npmjs.com/package/@rodit/rodit-auth-be). The included **CRUDA** comments API is only a sample resource — keep the auth spine, replace CRUDA with your domain.
 
+**NEAR Hackathon:** entry is [`rodit-sdk`](https://github.com/discernible-io/rodit-sdk) — this scaffold is supporting material only.
+
 ## Why federation
 
 IdentyClaw home (`https://api.identyclaw.com`) issues Passport / HOLA identity. It does **not** authorize arbitrary third-party APIs.

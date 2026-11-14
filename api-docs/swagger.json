@@ -11,9 +11,10 @@
       "email": "support@rodit-tech.com"
     },
     "license": {
-      "name": "Proprietary",
-      "url": "https://identyclaw.com"
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
     },
+
     "x-api-id": "identyclaw-federated-peer-v1"
   },
   "servers": [
